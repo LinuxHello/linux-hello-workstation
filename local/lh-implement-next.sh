@@ -36,6 +36,8 @@ fi
 : "${LH_RESET:=$HERE/lh-reset.sh}"
 # Nobody reviews an unattended run before it commits, so it never signs off (ADR-0007).
 export LH_UNATTENDED=1
+# Each issue gets its own branch issue-<n>; a fixed LH_BRANCH is for attended trials only.
+unset LH_BRANCH
 export CLONE_DIR REPO_SLUG OLLAMA_HOST OLLAMA_MODEL LH_BG_MODEL
 
 [[ "$LH_MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] || die "LH_MAX_ATTEMPTS must be a positive number"

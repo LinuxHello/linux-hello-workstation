@@ -10,6 +10,8 @@
 #   LH_BG_MODEL     Claude Code's background-call model (default: OLLAMA_MODEL)
 #   LH_MAX_TURNS    Claude Code turn limit per round
 #   LH_UNATTENDED   1 = nobody reviews before commit: no Signed-off-by, no signing requirement (ADR-0007)
+#   LH_BRANCH       branch to work on and push (default issue-<n>); the harness trials run each
+#                   brief twice, e.g. LH_BRANCH=issue-53-aider and LH_BRANCH=issue-53-claude
 #
 # The model only edits code. This script does everything else deterministically:
 #   1. reads the issue's "## Implementation brief" and the files it lists;
@@ -18,7 +20,7 @@
 #   3. runs the gates, giving the model up to two more rounds with the failure output;
 #   4. refuses changes outside the brief's files;
 #   5. commits (signed and signed-off when attended; neither when LH_UNATTENDED=1), pushes branch
-#      issue-<n>, opens a draft PR.
+#      issue-<n> (or LH_BRANCH), opens a draft PR.
 # The model's process gets no GitHub or git credential.
 set -euo pipefail
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
@@ -37,6 +39,8 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 log() { printf '\033[1m==> %s\033[0m\n' "$*"; }
 
 num=${1:-}; [[ "$num" =~ ^[0-9]+$ ]] || die "usage: $0 <issue>"
+: "${LH_BRANCH:=issue-$num}"
+[[ "$LH_BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ && "$LH_BRANCH" != main ]] || die "LH_BRANCH must be a plain branch name other than main, got '$LH_BRANCH'"
 [[ -d "$HOME/.cargo/bin" ]] && PATH="$HOME/.cargo/bin:$PATH"
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 case "$LH_HARNESS" in aider|claude) ;; *) die "LH_HARNESS must be aider or claude, got '$LH_HARNESS'" ;; esac
@@ -89,11 +93,11 @@ log "files: ${files[*]}"
 
 # 2. Branch.
 git fetch -q origin main
-if git show-ref -q --verify "refs/heads/issue-$num"; then git switch -q "issue-$num"; else git switch -q --no-track -c "issue-$num" origin/main; fi
+if git show-ref -q --verify "refs/heads/$LH_BRANCH"; then git switch -q "$LH_BRANCH"; else git switch -q --no-track -c "$LH_BRANCH" origin/main; fi
 gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-progress --remove-label status:ready >/dev/null 2>&1 || true
 fail() {
   gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:ready --remove-label status:in-progress >/dev/null 2>&1 || true
-  die "$* (issue #$num set back to status:ready; branch issue-$num kept with the model's edits for inspection)"
+  die "$* (issue #$num set back to status:ready; branch $LH_BRANCH kept with the model's edits for inspection)"
 }
 
 read_args=(--read AGENTS.md)
@@ -122,7 +126,7 @@ aider_run() {
     --model "ollama_chat/$OLLAMA_MODEL" --model-settings-file "$CACHE/model.settings.yml" \
     --no-auto-commits --no-dirty-commits --no-gitignore --yes-always \
     --no-check-update --analytics-disable --no-show-model-warnings \
-    --chat-history-file "$CACHE/issue-$num.chat.md" --input-history-file "$CACHE/issue-$num.input" \
+    --chat-history-file "$CACHE/${LH_BRANCH//\//_}.chat.md" --input-history-file "$CACHE/${LH_BRANCH//\//_}.input" \
     --map-tokens 1024 \
     --test-cmd "cargo test --workspace -q" --auto-test \
     "${read_args[@]}" --message "$1" "${files[@]}"
@@ -205,7 +209,7 @@ Refs #$num
 
 Assisted-by: $tool with a local model
 MSG
-git push -q -u origin "issue-$num"
+git push -q -u origin "$LH_BRANCH"
 
 tests_report=$(python3 - "$brief" <<'PY'
 import re, subprocess, sys
@@ -219,10 +223,10 @@ for n in names:
     print(f"- [{'x' if found else ' '}] `{n}`")
 PY
 )
-pr_url=$(gh pr list --repo "$REPO_SLUG" --head "issue-$num" --state open --json url --jq '.[0].url // empty')
+pr_url=$(gh pr list --repo "$REPO_SLUG" --head "$LH_BRANCH" --state open --json url --jq '.[0].url // empty')
 if [[ -z "$pr_url" ]]; then
   # shellcheck disable=SC2016  # backticks in the PR body are literal Markdown
-  pr_url=$(gh pr create --repo "$REPO_SLUG" --draft --base main --head "issue-$num" --title "$title" --body-file - <<BODY
+  pr_url=$(gh pr create --repo "$REPO_SLUG" --draft --base main --head "$LH_BRANCH" --title "$title" --body-file - <<BODY
 ## Intent
 
 Implements the brief in #$num: $title.

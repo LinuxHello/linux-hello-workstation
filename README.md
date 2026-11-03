@@ -66,9 +66,11 @@ One tick of `local/lh-implement-next.sh`:
 
 Run each of the three trial briefs through both harnesses on the same model and context, by hand, attended:
 
+Run each trial brief once per harness, from the same `main` commit, each on its own branch so the two runs do not mix. Clean the clone between the runs (`bash local/lh-reset.sh -y --main`):
+
 ```sh
-LH_HARNESS=aider  bash local/lh-implement.sh <issue>
-LH_HARNESS=claude bash local/lh-implement.sh <issue>
+LH_HARNESS=aider  LH_BRANCH=issue-<n>-aider  bash local/lh-implement.sh <n>
+LH_HARNESS=claude LH_BRANCH=issue-<n>-claude bash local/lh-implement.sh <n>
 ```
 
-Keep the harness that passes `make gates` and the test-name check more often, set it as `LH_HARNESS`, and report the result in ADR-0007 before it is accepted.
+Each run opens its own draft pull request. Record the results in the trials tracking issue of the public repository. A run succeeds only if the gates pass **and** the lead's conformance review finds the brief implemented; the gates alone did not catch Policy 1/4 implementing a different schema. Set the winning harness as `LH_HARNESS` in `implementer.env`.
