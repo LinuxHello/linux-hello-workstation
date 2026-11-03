@@ -1,0 +1,16 @@
+# Unattended implementer, one tick (ADR-0007). A user unit of the dedicated implementer user:
+#   ~/.config/systemd/user/lh-implementer.service
+# Paths and models come from ~/.config/linux-hello/implementer.env (see implementer.env.example).
+[Unit]
+Description=Linux Hello implementer: implement the next status:ready issue
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/linux-hello/implementer.env
+# Hold off suspend while a run is in progress; the lock is released when the run ends.
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=linux-hello-implementer --why="Implementing an issue" --mode=block ${LH_TOOLING_DIR}/local/lh-implement-next.sh
+# LH_RUN_TIMEOUT inside the script bounds the model run; this bounds the whole tick.
+TimeoutStartSec=3h
+Nice=10
+NoNewPrivileges=yes

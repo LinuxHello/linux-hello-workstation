@@ -4,3 +4,6 @@
 *.tmp
 .aider*
 target/
+
+# Settings with machine values; only *.env.example is committed
+*.env
