@@ -25,6 +25,17 @@ make verify      # read-only state dump, any time
 
 Rollback: everything is reversible in the web UI; the repo can be deleted from Settings → Danger Zone (needs your confirmation there).
 
+## Local Claude Code (attended)
+
+Start Claude Code on the workstation only through `local/claude-local.sh`. It points every model slot (main, Opus, Sonnet, Haiku, subagents) at Ollama on loopback, sets `CLAUDE_CODE_MAX_CONTEXT_TOKENS` to the served window, and refuses to start if the model is missing or its `num_ctx` differs. A bare `claude`, or the Claude desktop app, uses the Anthropic account and is billed.
+
+```sh
+ln -sf ~/projects/LinuxHello/linux-hello-workstation/local/claude-local.sh ~/.local/bin/claude-local
+claude-local --remote-control
+```
+
+Defaults: `OLLAMA_MODEL=gemma4-26b-64k`, `LH_NUM_CTX=65536`, `LH_BG_MODEL` = the main model. A separate background model (for example `LH_BG_MODEL=ornith:9b`) does not fit in VRAM beside gemma and makes Ollama evict or offload one of them.
+
 ## Unattended implementer (ADR-0007)
 
 Status: **UNTESTED against a live model and a live user manager.** `local/test-lh-implement-next.sh` tests the loop's logic with fake `gh`, model server and implementer; `shellcheck local/*.sh` is clean.
