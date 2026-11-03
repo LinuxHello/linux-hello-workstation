@@ -1,0 +1,6 @@
+# Local state, never committed
+.vscode/
+*.log
+*.tmp
+.aider*
+target/

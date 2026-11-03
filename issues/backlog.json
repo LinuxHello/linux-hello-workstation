@@ -1,0 +1,251 @@
+[
+  {
+    "title": "Spike: credentialsd provider API and portal on KDE Plasma",
+    "labels": [
+      "type:spike",
+      "container:tpm-provider",
+      "container:kpxc-bridge",
+      "upstream"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nCan a third-party credential provider register with credentialsd (v0.3.x, pre-release) and serve a WebAuthn create/get request that arrives through xdg-desktop-portal on KDE Plasma?\n\n## Why it matters\n\nThe whole design is an integration layer on credentialsd (constraint C1). If the provider API or the KDE portal path does not exist, the TPM provider and the KeePassXC bridge have nowhere to plug in.\n\n**Blocks:** TPM credential provider, KeePassXC provider bridge, routing policy.\n\n## Method\n\nRead the credentialsd provider interface and portal code at the tagged release; build it with the patched xdg-desktop-portal; register a stub provider that logs requests; drive one request from a test client.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: browser WebAuthn through the portal (Firefox, Chromium)",
+    "labels": [
+      "type:spike",
+      "container:agent",
+      "upstream"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nDo Firefox and Chromium on Linux send WebAuthn requests to xdg-desktop-portal or credentialsd today? If not, what is the shortest upstream path?\n\n## Why it matters\n\nDesign rule 4 says every client uses the same portal. Without browser support, the browser-extension fallback stays on the critical path.\n\n**Blocks:** Browser coverage; whether the KeePassXC browser-extension fallback is needed for 1.0.\n\n## Method\n\nCheck the current browser source and release notes for portal or credentialsd WebAuthn support; test against webauthn.io-style demo sites with the credentialsd stub provider.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: PAM module publishes method state over the Agent's D-Bus API",
+    "labels": [
+      "type:spike",
+      "container:pam",
+      "container:agent"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nCan `pam_linuxhello` run face, fingerprint and PIN in parallel and publish their state on the Agent's D-Bus API from inside a PAM conversation (greeter, lock screen, sudo)?\n\n## Why it matters\n\nPAM is text-only (UX design consequence). If the PAM module cannot hold a D-Bus connection cleanly in every PAM context, the PAM module and the Agent boundary moves (ADR-0001 expects this possibility).\n\n**Blocks:** Unified prompt (UX2), parallel methods (UX1), the PAM container boundary.\n\n## Method\n\nPrototype a PAM module that opens a system or session bus connection in each context (sddm/greeter, kscreenlocker, sudo, login on a TTY) and emits a signal; record which contexts allow it and under which AppArmor profile.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: Howdy interface for live preview, enrolment and test",
+    "labels": [
+      "type:spike",
+      "container:pam",
+      "container:plasma",
+      "upstream"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nDoes Howdy expose a library, D-Bus or CLI interface that supports live preview, enrolment and a test match without going through PAM?\n\n## Why it matters\n\nThe face enrolment wizard (UX) needs the IR detection results and a preview; the PAM module needs a match call it can run in parallel with fprintd.\n\n**Blocks:** Face enrolment wizard, parallel face method in the PAM module.\n\n## Method\n\nRead Howdy's source at the current release; list entry points; check its licence (MIT expected, unverified); test each entry point with an IR camera.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: third-party prompt in the Plasma login manager and kscreenlocker",
+    "labels": [
+      "type:spike",
+      "container:plasma",
+      "upstream"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nHow do the Plasma login manager and kscreenlocker accept a third-party prompt component, and can one component look identical in both and in-session?\n\n## Why it matters\n\nUX requires the login manager, lock screen and in-session prompts to look identical and to show the active method.\n\n**Blocks:** Plasma prompt component, UX2.\n\n## Method\n\nRead the greeter and kscreenlocker QML and plugin loading at the current Plasma release; build a minimal component that subscribes to the Agent's method-state signals.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: extension point in KDE's Users settings module",
+    "labels": [
+      "type:spike",
+      "container:plasma",
+      "upstream"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nDoes KDE's Users settings module have an extension point for adding Face and PIN entries beside the fingerprint entry?\n\n## Why it matters\n\nDecides between an upstream patch to plasma-desktop and the interim Linux Hello settings page.\n\n**Blocks:** Settings UI (face and PIN enrolment entries).\n\n## Method\n\nRead the kcm_users source at the current release; ask upstream on the KDE development channels if no extension point exists.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: change the TPM root key's authorisation in place with tss-esapi",
+    "labels": [
+      "type:spike",
+      "container:tpm-provider"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nCan tss-esapi change the authorisation of the per-user TPM root key in place (TPM2_ObjectChangeAuth or equivalent) without re-creating the key or its children?\n\n## Why it matters\n\nChanging the PIN must be non-destructive; only 'forgot PIN' leads to the destructive reset (ADR-0003).\n\n**Blocks:** PIN change in the Agent and `linuxhello-ctl`.\n\n## Method\n\nRead tss-esapi at the version we would pin; prototype against swtpm in CI, then a hardware TPM; confirm child keys still load after the change.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: camera streams RGB and IR at the same time",
+    "labels": [
+      "type:spike",
+      "container:plasma"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nCan a typical Windows Hello-class IR camera stream its RGB and IR sensors at the same time on Linux?\n\n## Why it matters\n\nThe face enrolment wizard shows the RGB feed while Howdy captures IR (UX).\n\n**Blocks:** Face enrolment wizard design.\n\n## Method\n\nEnumerate V4L2 devices and formats on at least two IR camera models; try concurrent capture; record kernel and driver versions.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: licences of libwebauthn, KeePassXC, fprintd and Howdy",
+    "labels": [
+      "type:spike",
+      "container:workspace",
+      "one-way-door"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nWhat are the exact licences of libwebauthn, KeePassXC, fprintd and Howdy, and does each fit constraints C2–C3 (link only LGPL or permissive; GPL across a process boundary only)?\n\n## Why it matters\n\nThe target architecture lists these licences as unverified. A wrong assumption here breaks the licence boundary (ADR-0002).\n\n**Blocks:** Any code that links or talks to these components.\n\n## Method\n\nRead each project's licence files and SPDX headers at the version we would use; record the result in the target architecture's constraints table. Not legal advice; flag anything unclear for a lawyer.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Spike: trademark risk of the name Linux Hello",
+    "labels": [
+      "type:spike",
+      "container:workspace",
+      "one-way-door"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nIs 'Linux Hello' likely to conflict with Microsoft's 'Windows Hello' trademark or any registered mark, and what are the fallback names?\n\n## Why it matters\n\nThe name is a one-way door: package names, D-Bus names and links will depend on it.\n\n**Blocks:** Crate and package names, D-Bus name ADR, first release.\n\n## Method\n\nSearch the EUIPO, USPTO and WIPO databases; record findings and two fallback names. Not legal advice.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days. Stop at the time box and record what is known.\n\n## Done when\n\n- [ ] A spike note exists in `docs/spikes/` (from `docs/templates/spike.md`) with question, method, evidence and a Yes / No / Partly answer.\n- [ ] Every claim cites upstream source, docs or a reproducible run at a named version.\n- [ ] The architecture note, `workspace.dsl` or an ADR is updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Write the spike notes and a Mermaid dependency map",
+    "labels": [
+      "type:docs",
+      "container:workspace"
+    ],
+    "milestone": "Project setup",
+    "body": "Create one note per Milestone 0 spike in `docs/spikes/` from `docs/templates/spike.md`, link each to its issue, and add a Mermaid graph of which spikes block which containers and features to `docs/spikes/README.md`.\n\n## Done when\n\n- [ ] Every open spike issue has a note, and every note links its issue.\n- [ ] The dependency map renders on GitHub and in Obsidian.\n"
+  },
+  {
+    "title": "Threat model and first security properties",
+    "labels": [
+      "type:security",
+      "container:security"
+    ],
+    "milestone": "Project setup",
+    "body": "Write the threat model in `docs/security/`: assets, actors, trust boundaries, entry points and threats, using the target architecture's threat list as the starting point. Derive the first security properties from it, each in plain language with the name of its future test (for example `caller_from_other_origin_is_refused`). Tests that cannot run yet start as `#[ignore]` placeholders named after the property.\n\nOwner: the maintainer (GOVERNANCE.md). Tests are written with AI assistance and reviewed by behaviour.\n\n## Done when\n\n- [ ] Threat model note with frontmatter and a Mermaid trust-boundary diagram.\n- [ ] Property list; each property names its test and the container that owns it.\n- [ ] SECURITY.md's security model matches the property list.\n"
+  },
+  {
+    "title": "ADR: D-Bus names io.github.LinuxHello.*",
+    "labels": [
+      "type:docs",
+      "one-way-door",
+      "container:dbus"
+    ],
+    "milestone": "Project setup",
+    "body": "GOVERNANCE.md lists D-Bus names as a one-way door that needs an ADR; `io.github.LinuxHello.Agent1` was chosen without one. Record the decision (reverse-DNS for a GitHub-hosted project; the project does not own a domain) with what becomes easier and harder.\n\n## Done when\n\n- [ ] ADR in `docs/adr/` and linked from the ADR index.\n"
+  },
+  {
+    "title": "Path-filtered CI with one aggregate required check",
+    "labels": [
+      "type:feature",
+      "container:workspace"
+    ],
+    "milestone": "Project setup",
+    "body": "Guardrail 3 (ADR-0001): CI filtered by path, one job per crate. Deferred until the crates hold real code, because a required check whose workflow a path filter skips stays pending and blocks the merge. Needs one aggregate required check that always reports.\n\n## Done when\n\n- [ ] Per-crate jobs run only when that crate or a shared file changes.\n- [ ] One always-reporting required check gates the merge; the ruleset is updated in the same change.\n"
+  },
+  {
+    "title": "Fuzz every parser in CI",
+    "labels": [
+      "type:security",
+      "container:policy"
+    ],
+    "milestone": "Project setup",
+    "body": "Every parser (policy files first) gets a fuzz target and a time-boxed fuzz run in CI. Blocked until the policy parser exists.\n\n## Done when\n\n- [ ] `cargo fuzz` targets for each parser.\n- [ ] A required CI job runs them for a fixed time on every pull request that touches a parser.\n"
+  },
+  {
+    "title": "Pin the Rust toolchain",
+    "labels": [
+      "type:security",
+      "container:workspace"
+    ],
+    "milestone": "Project setup",
+    "body": "Add `rust-toolchain.toml` so local builds, agents and CI use the same Rust version, and keep `rust-version` in `Cargo.toml` as the MSRV. CI currently installs `stable`, which moves.\n\n## Done when\n\n- [ ] `rust-toolchain.toml` with a pinned version and the components CI needs.\n- [ ] CI reads it instead of `stable`; Dependabot or a scheduled job proposes upgrades.\n"
+  },
+  {
+    "title": "Publish the organisation bootstrap scripts",
+    "labels": [
+      "type:docs",
+      "container:workspace"
+    ],
+    "milestone": "Project setup",
+    "body": "The scripts that configure the GitHub organisation and this repository (settings, ruleset, labels, milestones, issues) live outside the organisation today. Move them to `LinuxHello/.github` or an `org-config` repository so settings are reviewable as code. Remove workstation-specific defaults before publishing.\n\n## Done when\n\n- [ ] Scripts in an organisation repository, idempotent, with a read-only verify target.\n- [ ] No host names, home paths or other machine details in them.\n"
+  },
+  {
+    "title": "ADR: crate and package names before the first publish",
+    "labels": [
+      "type:docs",
+      "one-way-door",
+      "container:workspace"
+    ],
+    "milestone": null,
+    "body": "Crate and package names are a one-way door (crates.io names cannot be reused; distributions pin them). All crates are `publish = false` until this is decided. Depends on the trademark spike.\n\n## Done when\n\n- [ ] ADR in `docs/adr/` with the chosen names and the crates.io and distribution availability checked on the decision date.\n"
+  },
+  {
+    "title": "Spike: credentialsd with the patched portal and its GTK backend on Plasma",
+    "labels": [
+      "type:spike",
+      "container:plasma",
+      "upstream"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "## Question\n\nDoes credentialsd v0.3.1, built with the patched xdg-desktop-portal (`credentials-portal` branch), serve a WebAuthn create/get from a test client on KDE Plasma, using the GTK `credentialsd-ui` backend?\n\n## Why it matters\n\nSpike 0005 answered the provider-API question from source only; the build and run were untested. This decides whether the portal path works on Plasma at all before a KDE backend is designed.\n\n**Blocks:** the KDE portal backend design; end-to-end tests for any provider.\n\n## Method\n\nBuild credentialsd and the patched portal in a disposable environment (container or VM, not the host session); register the portal; drive one create and one get with `demo_client`; record what the GTK UI does under Plasma.\n\nMark each command and script tested or untested, with versions and hardware class.\n\n## Time box\n\nProposed: 2 working days.\n\n## Done when\n\n- [ ] A spike note in `docs/spikes/` with a Yes / No / Partly answer and reproducible commands.\n- [ ] The architecture note updated if the answer changes the design.\n"
+  },
+  {
+    "title": "Upstream: offer to implement the credentialsd provider API (credentialsd#26)",
+    "labels": [
+      "type:docs",
+      "upstream",
+      "container:tpm-provider",
+      "container:kpxc-bridge"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "Depends on the maintainer accepting ADR-0005 option A.\n\nEngage on credentialsd#26 before writing code: confirm the maintainer's draft (`CredentialProvider`, `CredentialProviderManager`, privileged enable/disable, Noise channel) is still the intended direction, offer to implement it, and agree scope and review expectations. Contributions to credentialsd are LGPL-3.0-only.\n\n## Done when\n\n- [ ] Upstream has answered, and the outcome is recorded in ADR-0005 (accepted, amended or superseded).\n- [ ] If agreed: follow-up issues for the credentialsd contribution and the TPM provider as its first consumer.\n"
+  },
+  {
+    "title": "Decide the 1.0 browser fallback: KeePassXC-Browser or the credentialsd extension",
+    "labels": [
+      "type:security",
+      "container:workspace",
+      "one-way-door"
+    ],
+    "milestone": "M0 – Spikes",
+    "body": "Spike 0006 found that no stock browser calls the credentials portal, so 1.0 needs a browser fallback. Two candidates:\n\n- **KeePassXC-Browser**: released, works on any site, but software keys unlocked by the KeePassXC database, and no TPM custody.\n- **credentialsd web extension**: reaches credentialsd today, but limited to two demo sites and passes the origin from the page side (spike 0006, evidence 5).\n\n## Done when\n\n- [ ] The origin-trust question is answered: can a native-messaging helper establish the origin, or must it come from the browser?\n- [ ] An ADR records the fallback for 1.0 and its retirement condition (stock browser portal support).\n"
+  },
+  {
+    "title": "Policy 1/4: schema types and strict parsing of one policy file",
+    "labels": [
+      "type:feature",
+      "type:security",
+      "container:agent",
+      "status:ready"
+    ],
+    "milestone": "M1 – Routing policy",
+    "body": "Starts once the policy semantics PR (`docs/architecture/policy-semantics.md`) is on `main`.\n\n## Implementation brief\n\n**Goal:** `parse_layer(text: &str) -> Result<Layer, PolicyError>` turns one policy file into typed values and rejects anything outside the schema.\n\n**Files:**\n1. `crates/linuxhello-agent/Cargo.toml`: add `serde = { version = \"1.0.229\", features = [\"derive\"] }` and `toml = \"1.1.8\"`.\n2. `crates/linuxhello-agent/src/lib.rs` (new): `#![forbid(unsafe_code)]`, crate doc comment, `pub mod policy;`.\n3. `crates/linuxhello-agent/src/policy/mod.rs` (new): `pub mod schema;` and re-exports.\n4. `crates/linuxhello-agent/src/policy/schema.rs` (new): types, validation, `parse_layer`, tests.\n\n**Schema** (every table and key optional; `#[serde(deny_unknown_fields)]` on every struct):\n\n| Table | Key | Type and range |\n| :-- | :-- | :-- |\n| `[pin]` | `min_length` | integer 4–64 |\n| | `max_length` | integer 4–127 |\n| | `digits`, `lowercase`, `uppercase`, `special` | `\"required\"`, `\"allowed\"`, `\"disallowed\"` |\n| | `history` | integer 0–50 |\n| | `expiry_days` | integer 1–730 |\n| | `lockout_attempts` | integer 1–32 |\n| | `lockout_minutes` | integer 1–1440 |\n| `[methods]` | `biometrics_allowed`, `face_requires_ir`, `require_hardware_tpm` | boolean |\n| `[context.<name>]` | name | `login`, `unlock`, `sudo`, `session` only |\n| | `methods` | non-empty array of `\"pin\"`, `\"fingerprint\"`, `\"face\"`, no duplicates |\n| | `factors` | integer 1–2 |\n| | `reverify_after` | integer + `s`/`m`/`h`/`d`, between 1 s and 30 d; parse to `std::time::Duration` |\n| `[rp_class.<name>]` | name | 1–64 chars of `[a-z0-9_-]` |\n| | `match` | non-empty array of patterns |\n| | `provider` | `\"tpm\"`, `\"keepassxc\"`, `\"any\"` |\n| | `prompt` | `\"none\"`, `\"presence\"`, `\"reverify\"` |\n| | `factors` | integer 1–2 |\n| | `require_second_credential` | boolean |\n\nA pattern is an exact domain (`bank.example`) or `*.` + domain (`*.bank.example`). Store it lower-cased without a trailing dot. Reject `*` alone, `*` anywhere else, empty labels, and characters outside `[a-z0-9.-]` after lower-casing.\n\n**Tests first** (in `schema.rs`, each must fail before the code exists):\n- `unknown_key_makes_file_unparseable` (e.g. `min_lenght`, an unknown table, an unknown context name)\n- `out_of_range_value_makes_file_unparseable` (one case per ranged key, both ends)\n- `invalid_rp_pattern_makes_file_unparseable` (`*`, `bank.*.example`, `*.`, `a..b`, `exa mple.com`)\n- `duplicate_method_makes_file_unparseable`\n- `reverify_after_parses_units` (`90s`, `15m`, `8h`, `30d`; rejects `0s`, `31d`, `8`, `8x`)\n- `example_policy_parses`: `include_str!(\"../../../../policy/policy.example.toml\")` parses\n- `empty_file_is_an_empty_layer`\n\n**Constraints:**\n- Invariant 3, fail closed: \"Unparseable policy denies everything except the PIN. No fallback silently weakens authentication.\"\n- Invariant 4: no `unsafe`. The crate root keeps `#![forbid(unsafe_code)]`.\n- Invariant 8: no host names, home paths or machine details in code, tests or commits.\n- Dependencies: only those named in this brief. No `unwrap()`/`expect()` outside tests.\n\n**Acceptance:**\n```sh\ncargo fmt --all --check\ncargo clippy --workspace --all-targets -- -D warnings\ncargo test --workspace\ncargo deny check\nbash scripts/ci/unsafe-policy.sh\n```\n\n**Out of scope:** merging layers, defaults, reading files from disk, any query API. Do not touch `main.rs`, other crates, CI or docs."
+  },
+  {
+    "title": "Policy 2/4: built-in defaults and layer merging",
+    "labels": [
+      "type:feature",
+      "type:security",
+      "container:agent",
+      "status:ready"
+    ],
+    "milestone": "M1 – Routing policy",
+    "body": "Depends on Policy 1/4.\n\n## Implementation brief\n\n**Goal:** `merge(admin: &[Layer], user: Option<&Layer>) -> Result<Effective, Contradiction>` produces the effective policy with a `managed` flag per key, following the layering rules below.\n\n**Files:**\n1. `crates/linuxhello-agent/src/policy/defaults.rs` (new): the built-in defaults.\n2. `crates/linuxhello-agent/src/policy/merge.rs` (new): restrictiveness, merging, invariants, tests.\n3. `crates/linuxhello-agent/src/policy/mod.rs`: add the two modules and re-exports.\n\n**Defaults:** PIN `min_length` 6, `max_length` 127, `digits` required, other classes allowed, `history` 0, no expiry, `lockout_attempts` 5, `lockout_minutes` 15. Methods: `biometrics_allowed` true, `face_requires_ir` true, `require_hardware_tpm` true. Every context (`login`, `unlock`, `sudo`, `session`): methods pin, fingerprint, face; factors 1; no `reverify_after`. No relying-party classes.\n\n**More restrictive is:** larger `min_length`, `history`, `lockout_minutes`, `factors`; smaller `max_length`, `expiry_days`, `lockout_attempts`, `reverify_after` (absent is least restrictive); `required` or `disallowed` beats `allowed`, and `required` against `disallowed` is a contradiction; `biometrics_allowed` false; `face_requires_ir`, `require_hardware_tpm`, `require_second_credential` true; `methods` intersection; provider `tpm` > `keepassxc` > `any`; prompt `reverify` > `presence` > `none`; `match` for the same class name: union.\n\n**Layering:** (1) merge all admin layers, most restrictive per key; (2) per key: admin value if set (managed), else most restrictive of default and user (the user can tighten, never loosen); (3) invariants: add `pin` to every context's methods; if `biometrics_allowed` is false remove `fingerprint` and `face` everywhere; keep `factors` as merged. Return `Contradiction` if merged `max_length` < `min_length` or a class is both required and disallowed.\n\n**Tests first** (in `merge.rs`):\n- `user_can_tighten_a_default`, `user_cannot_loosen_a_default`\n- `user_cannot_override_admin_setting` (admin loosens `min_length` to 4, user sets 8: effective 4, managed)\n- `conflicting_admin_files_resolve_to_most_restrictive` (one case per key family)\n- `contradictory_merge_is_reported`\n- `pin_is_always_allowed` (admin sets `methods = [\"face\"]` for `sudo`)\n- `biometrics_disabled_leaves_only_pin`\n\n**Constraints:**\n- Invariant 3, fail closed: \"Unparseable policy denies everything except the PIN. No fallback silently weakens authentication.\"\n- Invariant 4: no `unsafe`. The crate root keeps `#![forbid(unsafe_code)]`.\n- Invariant 8: no host names, home paths or machine details in code, tests or commits.\n- Dependencies: only those named in this brief. No `unwrap()`/`expect()` outside tests.\n\n**Acceptance:**\n```sh\ncargo fmt --all --check\ncargo clippy --workspace --all-targets -- -D warnings\ncargo test --workspace\ncargo deny check\nbash scripts/ci/unsafe-policy.sh\n```\n\n**Out of scope:** reading files, the PIN-only state, queries. Do not change `schema.rs` except to derive `Clone`/`PartialEq` if needed."
+  },
+  {
+    "title": "Policy 3/4: load policy files from disk, failing closed",
+    "labels": [
+      "type:feature",
+      "type:security",
+      "container:agent",
+      "status:ready"
+    ],
+    "milestone": "M1 – Routing policy",
+    "body": "Depends on Policy 2/4.\n\n## Implementation brief\n\n**Goal:** `load(admin_dir: &Path, user_file: &Path, admin_owner_uid: u32) -> Policy` never fails: it returns the effective policy, or the PIN-only state with a reason.\n\n**Files:**\n1. `crates/linuxhello-agent/src/policy/load.rs` (new): reading, checks, PIN-only state, tests.\n2. `crates/linuxhello-agent/src/policy/mod.rs`: the `Policy` type (effective policy or PIN-only with a `reason: String`) and re-exports.\n3. `crates/linuxhello-agent/Cargo.toml`: add `tempfile = \"3.27.0\"` under `[dev-dependencies]`.\n\n**Rules:**\n- Admin files: every `*.toml` directly in `admin_dir`, read in name order. A missing `admin_dir` or `user_file` contributes nothing.\n- PIN-only state if: any file exists but cannot be read, is not UTF-8 or fails `parse_layer`; `admin_dir` or an admin file is not owned by `admin_owner_uid` or has the group- or other-write bit set (`std::os::unix::fs::MetadataExt`, `PermissionsExt`); `merge` returns a contradiction.\n- PIN-only state means: every context allows only `pin` with factors 1; PIN rules are the defaults; every relying party gets provider `tpm`, prompt `reverify`, factors 1.\n- Production passes `admin_owner_uid = 0`; tests pass the current user's uid so they run without root.\n\n**Tests first** (in `load.rs`, using `tempfile::TempDir`):\n- `missing_files_use_defaults`\n- `unparseable_user_file_leaves_only_pin`, `unparseable_admin_file_leaves_only_pin`\n- `non_utf8_file_leaves_only_pin`\n- `admin_file_writable_by_others_leaves_only_pin` (chmod 0o666), `admin_file_with_wrong_owner_leaves_only_pin` (pass a uid that is not the file's)\n- `contradictory_merge_leaves_only_pin`\n- `pin_only_state_requires_tpm_and_reverify`\n- `pin_only_reason_names_the_file` (the reason contains the offending file name, not its content)\n\n**Constraints:**\n- Invariant 3, fail closed: \"Unparseable policy denies everything except the PIN. No fallback silently weakens authentication.\"\n- Invariant 4: no `unsafe`. The crate root keeps `#![forbid(unsafe_code)]`.\n- Invariant 8: no host names, home paths or machine details in code, tests or commits.\n- Dependencies: only those named in this brief. No `unwrap()`/`expect()` outside tests.\n- Never log or return file contents in the reason: a policy file may be malformed on purpose.\n\n**Acceptance:**\n```sh\ncargo fmt --all --check\ncargo clippy --workspace --all-targets -- -D warnings\ncargo test --workspace\ncargo deny check\nbash scripts/ci/unsafe-policy.sh\n```\n\n**Out of scope:** watching files for changes, D-Bus, queries."
+  },
+  {
+    "title": "Policy 4/4: policy queries for contexts and relying parties",
+    "labels": [
+      "type:feature",
+      "type:security",
+      "container:agent",
+      "status:ready"
+    ],
+    "milestone": "M1 – Routing policy",
+    "body": "Depends on Policy 3/4.\n\n## Implementation brief\n\n**Goal:** answer the engine's queries from a loaded `Policy`.\n\n**Files:**\n1. `crates/linuxhello-agent/src/policy/query.rs` (new): queries and tests.\n2. `crates/linuxhello-agent/src/policy/mod.rs`: re-exports.\n\n**Queries:**\n- `methods_for(&self, context: Context) -> MethodRule` (methods, factors, `reverify_after`).\n- `decision_for(&self, rp_id: &str) -> RpDecision` (provider, prompt, factors, `require_second_credential`). Normalise `rp_id`: lower-case, strip one trailing dot. An exact pattern matches only that domain. `*.d` matches any name ending in `.d` with at least one label before it, never `d` itself and never `xd` (e.g. `*.bank.example` does not match `evilbank.example`). The most specific match wins: exact beats wildcard, longer suffix beats shorter; ties merge most restrictive. No match: provider `any`, prompt `presence`, factors 1, no second credential. In the PIN-only state: provider `tpm`, prompt `reverify`, factors 1.\n- `pin_rules(&self) -> PinRules`.\n- `effective(&self) -> EffectiveView` (each value with its managed flag, and the PIN-only reason if any).\n\n**Tests first** (in `query.rs`):\n- `exact_domain_beats_wildcard`, `longer_suffix_beats_shorter`\n- `wildcard_does_not_match_apex`, `wildcard_does_not_match_lookalike_suffix`\n- `rp_ids_compared_case_insensitively`, `trailing_dot_is_ignored`\n- `unmatched_rp_gets_default_decision`\n- `pin_only_state_requires_tpm_and_reverify` (through `decision_for`)\n\n**Constraints:**\n- Invariant 3, fail closed: \"Unparseable policy denies everything except the PIN. No fallback silently weakens authentication.\"\n- Invariant 4: no `unsafe`. The crate root keeps `#![forbid(unsafe_code)]`.\n- Invariant 8: no host names, home paths or machine details in code, tests or commits.\n- Dependencies: only those named in this brief. No `unwrap()`/`expect()` outside tests.\n\n**Acceptance:**\n```sh\ncargo fmt --all --check\ncargo clippy --workspace --all-targets -- -D warnings\ncargo test --workspace\ncargo deny check\nbash scripts/ci/unsafe-policy.sh\n```\n\n**Out of scope:** D-Bus exposure, callers (PAM, providers, UI), caching."
+  }
+]
