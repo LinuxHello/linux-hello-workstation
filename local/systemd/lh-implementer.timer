@@ -1,0 +1,13 @@
+# Starts lh-implementer.service periodically (ADR-0007):
+#   ~/.config/systemd/user/lh-implementer.timer
+[Unit]
+Description=Linux Hello implementer: look for the next status:ready issue
+
+[Timer]
+OnBootSec=10min
+# Measured from the end of the previous tick, so ticks never overlap.
+OnUnitInactiveSec=20min
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

@@ -1,7 +1,0 @@
-# Aider settings for the local implementer. Workstation-only.
-# Fix the context at the size Ollama serves, so a request never asks Ollama to grow
-# the KV cache beyond what the GPU holds next to the model.
-- name: ollama_chat/qwen38-27b-text-32k
-  edit_format: diff
-  extra_params:
-    num_ctx: 32768
