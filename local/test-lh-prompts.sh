@@ -23,9 +23,11 @@ p=$(lh_repair_prompt "$brief" "$gates")
 check repair_prompt_carries_the_whole_brief "$p" "$brief"
 check repair_prompt_carries_the_gate_failure "$p" "Tests named in the brief are missing: user_cannot_loosen_a_default"
 check repair_prompt_states_the_rules "$p" "No unsafe code"
-if [[ "$p" != *"gate line 21"$'\n'* && "$p" == *"gate line 22"$'\n'* ]]; then
+# The gate output is 101 lines; the last 80 start at "gate line 22".
+kept=$(grep '^gate line ' <<<"$p")
+if [[ "$(head -1 <<<"$kept")" == "gate line 22" && "$(wc -l <<<"$kept")" -eq 79 ]]; then
   ok repair_prompt_keeps_only_the_last_80_gate_lines
-else nok repair_prompt_keeps_only_the_last_80_gate_lines "wrong lines kept"; fi
+else nok repair_prompt_keeps_only_the_last_80_gate_lines "kept from '$(head -1 <<<"$kept")', $(wc -l <<<"$kept") gate lines"; fi
 if [[ "${p##*"$brief"}" == *"Gate output"* ]]; then
   ok repair_prompt_puts_the_gate_output_after_the_brief
 else nok repair_prompt_puts_the_gate_output_after_the_brief "gate output precedes the brief"; fi

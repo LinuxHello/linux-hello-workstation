@@ -23,7 +23,7 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("content-length") or 0)
         body = self.rfile.read(n).decode() if n else ""
         with open(log, "a") as f: f.write(json.dumps({"method": self.command, "path": self.path, "body": body}) + "\n")
-        status = 400 if self.path == "/fail" else 200
+        status = 400 if self.headers.get("x-stub-fail") else 200
         out = b'{"error":"bad"}' if status == 400 else reply
         self.send_response(status); self.send_header("content-type", "text/event-stream")
         self.send_header("content-length", str(len(out))); self.end_headers(); self.wfile.write(out)
@@ -68,15 +68,22 @@ post /v1/messages/count_tokens '{"model":"m","messages":[]}' >/dev/null
 if [[ "$(last | jq -r .body)" == '{"model":"m","messages":[]}' ]]; then ok other_paths_pass_through_untouched
 else nok other_paths_pass_through_untouched "$(last)"; fi
 
-curl -fsS "$url/api/tags" >/dev/null
-if [[ "$(last | jq -r '.method + " " + .path')" == "GET /api/tags" ]]; then ok get_requests_pass_through
-else nok get_requests_pass_through "$(last)"; fi
+before=$(wc -l <"$work/req.log")
+codes=$(for r in "GET /api/tags" "POST /api/pull" "POST /v1/messages/../../api/delete" "DELETE /v1/messages"; do
+  curl -s -o /dev/null -w '%{http_code} ' -X "${r%% *}" "$url${r#* }" -d '{}'; done)
+if [[ "$codes" == "404 404 404 404 " && "$(wc -l <"$work/req.log")" == "$before" ]]; then ok other_requests_are_refused_and_never_reach_ollama
+else nok other_requests_are_refused_and_never_reach_ollama "codes: $codes; upstream saw $(( $(wc -l <"$work/req.log") - before )) request(s)"; fi
 
-code=$(curl -s -o "$work/fail.out" -w '%{http_code}' -X POST "$url/fail" -d '{}')
+post '/v1/messages?beta=true&x=http://192.0.2.1/' '{"model":"m","max_tokens":1,"messages":[]}' >/dev/null
+if [[ "$(last | jq -r .path)" == "/v1/messages" ]]; then ok query_string_does_not_reach_ollama
+else nok query_string_does_not_reach_ollama "$(last)"; fi
+
+code=$(curl -s -o "$work/fail.out" -w '%{http_code}' -X POST "$url/v1/messages/count_tokens" -H 'x-stub-fail: 1' -d '{}')
 if [[ "$code" == 400 && "$(cat "$work/fail.out")" == '{"error":"bad"}' ]]; then ok upstream_error_reaches_the_client_unchanged
 else nok upstream_error_reaches_the_client_unchanged "status $code, body $(cat "$work/fail.out")"; fi
 
-if python3 -I "$here/lh-nothink-relay.py" http://192.0.2.1:11434 >/dev/null 2>&1; then
+# 192.0.2.1 is a documentation address (RFC 5737); the relay must refuse it before connecting.
+if python3 -I "$here/lh-nothink-relay.py" http://192.0.2.1:11434 >/dev/null 2>&1; then  # NOSONAR shell:S5332 never contacted
   nok non_loopback_upstream_is_refused "relay started"
 else ok non_loopback_upstream_is_refused; fi
 
