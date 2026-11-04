@@ -74,7 +74,7 @@ codes=$(for r in "GET /api/tags" "POST /api/pull" "POST /v1/messages/../../api/d
 if [[ "$codes" == "404 404 404 404 " && "$(wc -l <"$work/req.log")" == "$before" ]]; then ok other_requests_are_refused_and_never_reach_ollama
 else nok other_requests_are_refused_and_never_reach_ollama "codes: $codes; upstream saw $(( $(wc -l <"$work/req.log") - before )) request(s)"; fi
 
-post '/v1/messages?beta=true&x=http://192.0.2.1/' '{"model":"m","max_tokens":1,"messages":[]}' >/dev/null
+post '/v1/messages?beta=true&x=1' '{"model":"m","max_tokens":1,"messages":[]}' >/dev/null
 if [[ "$(last | jq -r .path)" == "/v1/messages" ]]; then ok query_string_does_not_reach_ollama
 else nok query_string_does_not_reach_ollama "$(last)"; fi
 
