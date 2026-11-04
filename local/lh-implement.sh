@@ -155,10 +155,10 @@ PROMPT
 }
 model_run() { if [[ "$LH_HARNESS" == claude ]]; then claude_run "$1"; else aider_run "$1"; fi; }
 
+# shellcheck source=local/lh-prompts.sh
+source "$HERE/lh-prompts.sh"
 log "round 1: implementing the brief"
-model_run "You are the implementer for Linux Hello. Implement exactly this brief. Write the brief's tests first, then the code. Edit only the files you were given. Follow AGENTS.md (read-only). No unsafe code, no unwrap() or expect() outside tests, no new dependencies beyond those the brief names.
-
-$brief" || fail "$LH_HARNESS failed"
+model_run "$(lh_implement_prompt "$brief")" || fail "$LH_HARNESS failed"
 
 # 3. Gates, plus "every test the brief names exists", with up to FIX_ROUNDS repair rounds.
 missing_tests() {
@@ -185,9 +185,7 @@ until out=$(gates 2>&1); do
   round=$((round + 1))
   [[ $round -le $FIX_ROUNDS ]] || { printf '%s\n' "$out" | tail -60; fail "gates still failing after $FIX_ROUNDS repair rounds"; }
   log "gates failed; repair round $round"
-  model_run "The gates failed. Fix the cause in the files you were given; do not weaken tests, lints or checks.
-
-$(printf '%s\n' "$out" | tail -80)" || fail "$LH_HARNESS failed"
+  model_run "$(lh_repair_prompt "$brief" "$out")" || fail "$LH_HARNESS failed"
 done
 log "gates pass"
 
