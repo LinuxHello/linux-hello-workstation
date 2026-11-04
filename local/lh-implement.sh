@@ -93,7 +93,9 @@ log "files: ${files[*]}"
 
 # 2. Branch.
 git fetch -q origin main
-if git show-ref -q --verify "refs/heads/$LH_BRANCH"; then git switch -q "$LH_BRANCH"; else git switch -q --no-track -c "$LH_BRANCH" origin/main; fi
+# shellcheck source=local/lh-branch.sh
+source "$HERE/lh-branch.sh"
+lh_select_branch "$LH_BRANCH" origin/main || die "not starting issue #$num on a stale branch"
 gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-progress --remove-label status:ready >/dev/null 2>&1 || true
 fail() {
   gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:ready --remove-label status:in-progress >/dev/null 2>&1 || true

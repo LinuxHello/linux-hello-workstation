@@ -59,6 +59,7 @@ reset: ; @bash local/lh-reset.sh
 # --- Checks ---------------------------------------------------------------------------------
 test:
 	bash local/test-lh-implement-next.sh
+	bash local/test-lh-branch.sh
 	bash scripts/test-triage.sh
 	@if command -v shellcheck >/dev/null; then shellcheck -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
 	 else echo "shellcheck not installed: sudo apt install shellcheck"; fi
