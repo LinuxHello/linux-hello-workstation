@@ -134,19 +134,22 @@ aider_run() {
 # Claude Code: every model slot on the local model, the context it is served with, edits only,
 # cargo as the only command. The brief's files and read-only files are named in the prompt.
 claude_run() {
-  model_env \
+  # An empty config dir: the user's plugins, skills and MCP servers alone overflow a 32k context.
+  mkdir -p "$CACHE/claude-config"
+  model_env CLAUDE_CONFIG_DIR="$CACHE/claude-config" \
     ANTHROPIC_BASE_URL="$OLLAMA_HOST" ANTHROPIC_AUTH_TOKEN=ollama \
     ANTHROPIC_MODEL="$OLLAMA_MODEL" ANTHROPIC_DEFAULT_OPUS_MODEL="$OLLAMA_MODEL" \
     ANTHROPIC_DEFAULT_SONNET_MODEL="$OLLAMA_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$LH_BG_MODEL" \
     CLAUDE_CODE_SUBAGENT_MODEL="$OLLAMA_MODEL" CLAUDE_CODE_MAX_CONTEXT_TOKENS="$LH_NUM_CTX" \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     claude -p --model "$OLLAMA_MODEL" --max-turns "$LH_MAX_TURNS" --permission-mode acceptEdits \
-      --allowedTools Read Grep Glob Edit Write 'Bash(cargo test:*)' 'Bash(cargo build:*)' 'Bash(cargo check:*)' \
-      "$1
+      --allowedTools Read Grep Glob Edit Write 'Bash(cargo test:*)' 'Bash(cargo build:*)' 'Bash(cargo check:*)' <<PROMPT
+$1
 
 Files you may edit: ${files[*]}
 Files to read, not edit: AGENTS.md ${reads[*]}
-Run cargo test --workspace -q after each edit."
+Run cargo test --workspace -q after each edit.
+PROMPT
 }
 model_run() { if [[ "$LH_HARNESS" == claude ]]; then claude_run "$1"; else aider_run "$1"; fi; }
 
