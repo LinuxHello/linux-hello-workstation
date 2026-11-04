@@ -4,8 +4,9 @@
 #
 #   lh-implement-next.sh
 #
-# Each tick: take the lock; skip if the GPU is busy; pick the oldest open status:ready issue that
-# has an implementation brief; clean the clone; run lh-implement.sh unattended with a timeout.
+# Each tick: take the lock; skip if the GPU is busy; pick the first status:ready issue in backlog
+# order (the public repository's scripts/backlog/backlog.sh: priority, no open blocker, lowest
+# number) that has an implementation brief; clean the clone; run lh-implement.sh unattended with a timeout.
 # On failure the issue goes back to status:ready; after LH_MAX_ATTEMPTS failures it goes to
 # status:blocked with a comment holding the scrubbed tail of the log.
 #
@@ -34,6 +35,8 @@ fi
 : "${LH_STATE_DIR:=${XDG_STATE_HOME:-$HOME/.local/state}/linux-hello-implementer}"
 : "${LH_IMPLEMENT:=$HERE/lh-implement.sh}"
 : "${LH_RESET:=$HERE/lh-reset.sh}"
+# Backlog order comes from the public repository, so the loop and `make next` agree.
+: "${LH_BACKLOG:=$CLONE_DIR/scripts/backlog/backlog.sh}"
 # Nobody reviews an unattended run before it commits, so it never signs off (ADR-0007).
 export LH_UNATTENDED=1
 # Each issue gets its own branch issue-<n>; a fixed LH_BRANCH is for attended trials only.
@@ -57,10 +60,11 @@ if [[ -n "$LH_BUSY_CHECK" ]] && bash -c "$LH_BUSY_CHECK"; then
   log "GPU busy (LH_BUSY_CHECK); trying again next tick"; exit 0
 fi
 
-# 2. The oldest open status:ready issue with an implementation brief.
+# 2. The first status:ready issue in backlog order that has an implementation brief.
+[[ -f "$LH_BACKLOG" ]] || die "$LH_BACKLOG missing; update the clone ($CLONE_DIR) to a main that has it"
+ready=$(REPO_SLUG="$REPO_SLUG" bash "$LH_BACKLOG" order ready) || die "backlog order failed"
 issue=""
-for n in $(gh issue list --repo "$REPO_SLUG" --label status:ready --state open --limit 100 \
-             --json number,createdAt --jq 'sort_by(.createdAt) | .[].number'); do
+for n in $ready; do
   if [[ "$(gh issue view "$n" --repo "$REPO_SLUG" --json body,comments \
             --jq '[.body] + [.comments[].body] | any(test("(?m)^## Implementation brief"))')" == true ]]; then
     issue=$n; break

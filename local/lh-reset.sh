@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Return the clone to a clean tree so lh-agent.sh / lh-implement.sh can run. Workstation-only.
+# Return the clone to a clean tree so lh-implement.sh can run. Workstation-only.
 #
 #   lh-reset.sh [-n] [-y] [--main]
 #     -n, --dry-run   show what would be saved and removed, change nothing
