@@ -1,5 +1,7 @@
 # Linux Hello workstation tooling. `make` (or `make help`) lists every task; RUNBOOK.md says when
 # to use which. Override defaults on the command line, e.g. make next CLONE_DIR=/tmp/linux-hello
+# Per-checkout overrides (git-ignored), e.g. CLONE_DIR := ../linux-hello
+-include local.mk
 export ORG ?= LinuxHello
 export REPO ?= linux-hello
 export OWNER ?= atterdag
