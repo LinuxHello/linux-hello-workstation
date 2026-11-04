@@ -40,6 +40,13 @@ echo "implement $1 unattended=$LH_UNATTENDED" >>"$CALLS"
 echo "error in $CLONE_DIR/crates/x.rs on $OLLAMA_MODEL at $OLLAMA_HOST in $HOME"
 exit "${IMPL_RC:-0}"
 EOF
+# Backlog order: the numbers in list.json by rank (priority), then number; records the call.
+cat >"$work/bin/fake-backlog" <<'EOF'
+#!/usr/bin/env bash
+echo "backlog $*" >>"$CALLS"
+[[ "$*" == "order ready" ]] || { echo "unexpected backlog $*" >&2; exit 2; }
+jq -r 'sort_by(.rank, .number) | .[].number' "$FIX/list.json"
+EOF
 cat >"$work/bin/fake-reset" <<'EOF'
 #!/usr/bin/env bash
 echo "reset $*" >>"$CALLS"
@@ -59,61 +66,75 @@ CLONE_DIR=$FIX/clone
 LH_UNATTENDED=0
 EOF
 }
-issue() { # number created-at has-brief
+issue() { # number priority-rank(0 now .. 3 none) has-brief
   local body="Some issue."; [[ "$3" == yes ]] && body=$'Text\n## Implementation brief\nGoal: x'
   jq -n --arg b "$body" '{body: $b, comments: []}' >"$FIX/issue-$1.json"
-  jq --argjson n "$1" --arg c "$2" '. + [{number: $n, createdAt: $c}]' "$FIX/list.json" >"$FIX/l" && mv "$FIX/l" "$FIX/list.json"
+  jq --argjson n "$1" --argjson r "$2" '. + [{number: $n, rank: $r}]' "$FIX/list.json" >"$FIX/l" && mv "$FIX/l" "$FIX/list.json"
 }
 run() {
   status=0
   export FIX CALLS
   out="$(PATH="$work/bin:$PATH" LH_ENV_FILE="$FIX/env" LH_STATE_DIR="$STATE" \
-         LH_IMPLEMENT="$work/bin/fake-implement" LH_RESET="$work/bin/fake-reset" "$@" "$loop" 2>&1)" || status=$?
+         LH_IMPLEMENT="$work/bin/fake-implement" LH_RESET="$work/bin/fake-reset" \
+         LH_BACKLOG="$work/bin/fake-backlog" "$@" "$loop" 2>&1)" || status=$?
 }
 ok()  { pass=$((pass + 1)); echo "ok   $1"; }
 nok() { fail=$((fail + 1)); echo "FAIL $1: $2"; echo "     ${out//$'\n'/$'\n'     }"; }
 implemented() { grep '^implement' "$CALLS" || true; }
 
 # ---------------------------------------------------------------------------
-t=oldest_ready_issue_with_a_brief_is_implemented_unattended
+t=first_ready_issue_in_backlog_order_with_a_brief_is_implemented_unattended
 new_case "$t"
-issue 12 2026-11-02T00:00:00Z no
-issue 15 2026-11-03T00:00:00Z yes
-issue 14 2026-11-01T00:00:00Z yes
+issue 12 3 no
+issue 15 3 yes
+issue 14 3 yes
 run
 if [[ $status == 0 && "$(implemented)" == "implement 14 unattended=1" ]] && grep -q '^reset -y --main' "$CALLS"
 then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
 
+t=higher_priority_wins_over_lower_number
+new_case "$t"
+issue 14 3 yes
+issue 15 0 yes
+run
+if [[ $status == 0 && "$(implemented)" == "implement 15 unattended=1" ]]; then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
+t=missing_backlog_script_fails_closed
+new_case "$t"
+issue 14 3 yes
+run env LH_BACKLOG="$FIX/nonexistent"
+if [[ $status != 0 && -z "$(implemented)" ]] && grep -q 'update the clone' <<<"$out"; then ok "$t"; else nok "$t" "status $status"; fi
+
 t=gpu_busy_with_another_model_claims_nothing
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 echo '{"models":[{"name":"fake-model:1b"},{"name":"someone-else:7b"}]}' >"$FIX/ps.json"
 run
-if [[ $status == 0 && -z "$(implemented)" ]] && ! grep -q 'issue list' "$CALLS"; then ok "$t"; else nok "$t" "status $status"; fi
+if [[ $status == 0 && -z "$(implemented)" ]] && ! grep -q '^backlog' "$CALLS"; then ok "$t"; else nok "$t" "status $status"; fi
 
 t=own_models_loaded_do_not_count_as_busy
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 echo '{"models":[{"name":"fake-model:1b"},{"name":"fake-small:1b"}]}' >"$FIX/ps.json"
 run
 if [[ $status == 0 && "$(implemented)" == "implement 14 unattended=1" ]]; then ok "$t"; else nok "$t" "status $status"; fi
 
 t=busy_check_hook_claims_nothing
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 echo 'LH_BUSY_CHECK=true' >>"$FIX/env"
 run
 if [[ $status == 0 && -z "$(implemented)" ]]; then ok "$t"; else nok "$t" "status $status"; fi
 
 t=no_ready_issue_with_a_brief_exits_cleanly
 new_case "$t"
-issue 12 2026-11-02T00:00:00Z no
+issue 12 3 no
 run
 if [[ $status == 0 && -z "$(implemented)" ]] && ! grep -q '^reset' "$CALLS"; then ok "$t"; else nok "$t" "status $status"; fi
 
 t=concurrent_run_exits_without_claiming
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 mkdir -p "$STATE"
 exec 8>"$STATE/lock"; flock -n 8
 run
@@ -122,7 +143,7 @@ if [[ $status == 0 && -z "$(implemented)" ]]; then ok "$t"; else nok "$t" "statu
 
 t=failure_below_the_limit_returns_issue_to_ready
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 IMPL_RC=1 run
 if [[ $status != 0 && "$(cat "$STATE/attempts/14")" == 1 ]] \
    && grep -q 'issue edit 14 .*--add-label status:ready --remove-label status:in-progress' "$CALLS" \
@@ -130,7 +151,7 @@ if [[ $status != 0 && "$(cat "$STATE/attempts/14")" == 1 ]] \
 
 t=last_allowed_failure_blocks_issue_with_a_scrubbed_log
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 mkdir -p "$STATE/attempts"; echo 2 >"$STATE/attempts/14"
 IMPL_RC=1 run
 comment="$(cat "$FIX/comment-14.md" 2>/dev/null || true)"
@@ -141,14 +162,14 @@ then ok "$t"; else nok "$t" "status $status, comment: $comment"; fi
 
 t=success_clears_the_attempt_count
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 mkdir -p "$STATE/attempts"; echo 2 >"$STATE/attempts/14"
 run
 if [[ $status == 0 && ! -e "$STATE/attempts/14" ]]; then ok "$t"; else nok "$t" "status $status"; fi
 
 t=timeout_counts_as_a_failure
 new_case "$t"
-issue 14 2026-11-01T00:00:00Z yes
+issue 14 3 yes
 echo 'LH_RUN_TIMEOUT=1s' >>"$FIX/env"
 cat >"$FIX/slow" <<'EOF'
 #!/usr/bin/env bash

@@ -259,4 +259,4 @@ BODY
 fi
 gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-review --remove-label status:in-progress >/dev/null 2>&1 || true
 log "draft PR: $pr_url"
-log "next: bash $HERE/lh-agent.sh review ${pr_url##*/}"
+log "next: the lead reviews it against the brief (status:in-review)"

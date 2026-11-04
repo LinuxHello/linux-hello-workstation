@@ -7,3 +7,4 @@ target/
 
 # Settings with machine values; only *.env.example is committed
 *.env
+local.mk

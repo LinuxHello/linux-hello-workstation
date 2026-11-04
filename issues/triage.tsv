@@ -1,0 +1,28 @@
+# Proposed triage of the open issues in LinuxHello/linux-hello, 2026-11-04. Review, edit, then
+#   make triage           show what would change
+#   make triage APPLY=1   change it on GitHub
+# Columns (tab-separated): issue, status, priority, blocked by (comma-separated issue numbers or -), note.
+# status: needs-brief | ready | in-progress | in-review | blocked. priority: now | next | later.
+# "in-review" on an issue without a PR means: the maintainer decides (see note).
+55	in-progress	now	-	Tracker for the three harness trials (#53 done, #54, #38)
+54	ready	now	-	Trial 2 of 3; brief posted
+38	needs-brief	now	54	Trial 3 of 3; the prose dependency on #53 is merged
+39	needs-brief	next	38	Policy 3/4
+40	needs-brief	next	39	Policy 4/4
+16	needs-brief	now	-	Security properties first: needed before code past the policy parser
+31	needs-brief	now	-	Spike; blocks the KDE portal backend design and provider end-to-end tests
+19	in-review	now	-	Maintainer: #43 added the policy fuzz target and CI fuzzing; close if that meets it
+14	needs-brief	next	-	Spike; blocks #17, #22 and the first release
+17	needs-brief	next	14	One-way door
+33	needs-brief	next	31	One-way door; blocker #31 assumed, the issue body does not say
+32	needs-brief	next	-	Waits for the maintainer to accept ADR-0005 (not an issue, so no link)
+11	needs-brief	next	-	Spike; blocks PIN change in the Agent and linuxhello-ctl
+7	needs-brief	next	-	Spike; blocks the unified prompt and the PAM container boundary
+9	needs-brief	next	-	Spike; blocks the Plasma prompt component
+22	needs-brief	later	14	One-way door; only needed before the first publish
+8	needs-brief	later	-	Spike; blocks face enrolment
+10	needs-brief	later	-	Spike; blocks the settings UI
+12	needs-brief	later	-	Spike; blocks face enrolment wizard design
+15	needs-brief	later	-	Its Mermaid dependency map is replaced by blocked-by links; rescope to the spike notes or close
+18	needs-brief	later	-	Deferred until the crates hold real code
+21	in-review	later	-	Maintainer: the tooling is now the private linux-hello-workstation repo (invariant 8); close as superseded?
