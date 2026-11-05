@@ -60,6 +60,7 @@ reset: ; @bash local/lh-reset.sh
 test:
 	bash local/test-lh-implement-next.sh
 	bash local/test-lh-branch.sh
+	bash local/test-lh-brief.sh
 	bash local/test-lh-prompts.sh
 	bash local/test-lh-nothink-relay.sh
 	bash scripts/test-triage.sh

@@ -191,14 +191,15 @@ log "round 1: implementing the brief"
 model_run "$(lh_implement_prompt "$brief")" || fail "$LH_HARNESS failed"
 
 # 3. Gates, plus "every test the brief names exists", with up to FIX_ROUNDS repair rounds.
+# shellcheck source=local/lh-brief.sh
+source "$HERE/lh-brief.sh"
 missing_tests() {
-  python3 - "$brief" <<'PY'
+  python3 - "$(lh_brief_test_names "$brief")" <<'PY'
 import re, subprocess, sys
-m = re.search(r"\*\*Tests first\*\*(.*?)(?:\n\*\*[A-Z]|\Z)", sys.argv[1], re.S)
-names = [n for n in re.findall(r"`([a-z][a-z0-9_]+)`", m.group(1) if m else "") if n.count("_") >= 2]
+names = sys.argv[1].split()
 subprocess.run(["git", "add", "-N", "."], check=False)
 diff = subprocess.run(["git", "diff", "origin/main"], capture_output=True, text=True).stdout
-print(" ".join(n for n in dict.fromkeys(names) if not re.search(r"^\+\s*fn " + re.escape(n) + r"\s*\(", diff, re.M)))
+print(" ".join(n for n in names if not re.search(r"^\+\s*fn " + re.escape(n) + r"\s*\(", diff, re.M)))
 PY
 }
 gates() {
