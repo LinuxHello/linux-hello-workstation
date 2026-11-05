@@ -160,7 +160,10 @@ aider_run() {
     "${read_args[@]}" --message "$1" "${files[@]}"
 }
 # Claude Code: every model slot on the local model, the context it is served with, edits only,
-# cargo as the only command. The brief's files and read-only files are named in the prompt.
+# cargo test, build, check, clippy and fmt and make fix as the only commands: the gates the brief
+# asks for, without make gates itself (fuzzing, audit), which the script runs after the model.
+# Without clippy the model spent 50 of 150 turns on refused clippy calls (#61, 2026-11-05).
+# The brief's files and read-only files are named in the prompt.
 # --tools sends only the six tools the model needs: all built-in tools cost 15.3k tokens of the
 # window per request, these six 9.0k (measured on Claude Code 2.1.318). LH_MAX_OUTPUT: see the header.
 claude_run() {
@@ -175,12 +178,15 @@ claude_run() {
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     claude -p --model "$OLLAMA_MODEL" --max-turns "$LH_MAX_TURNS" --permission-mode acceptEdits \
       --tools Read Grep Glob Edit Write Bash \
-      --allowedTools Read Grep Glob Edit Write 'Bash(cargo test:*)' 'Bash(cargo build:*)' 'Bash(cargo check:*)' <<PROMPT
+      --allowedTools Read Grep Glob Edit Write 'Bash(cargo test:*)' 'Bash(cargo build:*)' 'Bash(cargo check:*)' \
+      'Bash(cargo clippy:*)' 'Bash(cargo fmt:*)' 'Bash(make fix)' <<PROMPT
 $1
 
 Files you may edit: ${files[*]}
 Files to read, not edit: AGENTS.md ${reads[*]}
-Run cargo test --workspace -q after each edit.
+Run cargo test --workspace -q after each edit. Before you finish, run make fix, then
+cargo clippy --workspace --all-targets -- -D warnings, and fix what remains. The script runs the
+full gates (make gates) after you; you cannot run them yourself.
 PROMPT
 }
 model_run() { if [[ "$LH_HARNESS" == claude ]]; then claude_run "$1"; else aider_run "$1"; fi; }
