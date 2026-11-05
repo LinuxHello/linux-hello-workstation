@@ -9,6 +9,10 @@
 #   OLLAMA_MODEL    model the harness uses    LH_NUM_CTX  context window Ollama serves it with
 #   LH_BG_MODEL     Claude Code's background-call model (default: OLLAMA_MODEL)
 #   LH_MAX_TURNS    Claude Code turn limit per round
+#   LH_THINK        0 = the model does not think (default), in both harnesses; 1 = Ollama's default.
+#                   Thinking took 20-40k tokens per reply on #38 and overflowed a 64k window in both.
+#                   Aider: think: false. Claude Code cannot switch it off, so it talks to Ollama
+#                   through local/lh-nothink-relay.py, which sets thinking to disabled.
 #   LH_UNATTENDED   1 = nobody reviews before commit: no Signed-off-by, no signing requirement (ADR-0007)
 #   LH_BRANCH       branch to work on and push (default issue-<n>); the harness trials run each
 #                   brief twice, e.g. LH_BRANCH=issue-53-aider and LH_BRANCH=issue-53-claude
@@ -33,6 +37,7 @@ set -euo pipefail
 : "${LH_BG_MODEL:=$OLLAMA_MODEL}"
 : "${LH_MAX_TURNS:=60}"
 : "${LH_UNATTENDED:=0}"
+: "${LH_THINK:=0}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/linux-hello-aider"
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -46,6 +51,7 @@ num=${1:-}; [[ "$num" =~ ^[0-9]+$ ]] || die "usage: $0 <issue>"
 case "$LH_HARNESS" in aider|claude) ;; *) die "LH_HARNESS must be aider or claude, got '$LH_HARNESS'" ;; esac
 [[ "$LH_NUM_CTX" =~ ^[0-9]+$ && "$LH_MAX_TURNS" =~ ^[0-9]+$ ]] || die "LH_NUM_CTX and LH_MAX_TURNS must be numbers"
 [[ "$LH_UNATTENDED" == 0 || "$LH_UNATTENDED" == 1 ]] || die "LH_UNATTENDED must be 0 or 1"
+[[ "$LH_THINK" == 0 || "$LH_THINK" == 1 ]] || die "LH_THINK must be 0 or 1"
 harness_cmd=aider; [[ "$LH_HARNESS" == claude ]] && harness_cmd=claude
 for c in "$harness_cmd" gh git jq python3 cargo curl; do command -v "$c" >/dev/null || die "$c not installed (aider: bash $HERE/install-aider.sh)"; done
 gh auth status >/dev/null 2>&1 || die "gh not authenticated"
@@ -93,7 +99,9 @@ log "files: ${files[*]}"
 
 # 2. Branch.
 git fetch -q origin main
-if git show-ref -q --verify "refs/heads/$LH_BRANCH"; then git switch -q "$LH_BRANCH"; else git switch -q --no-track -c "$LH_BRANCH" origin/main; fi
+# shellcheck source=local/lh-branch.sh
+source "$HERE/lh-branch.sh"
+lh_select_branch "$LH_BRANCH" origin/main || die "not starting issue #$num on a stale branch"
 gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-progress --remove-label status:ready >/dev/null 2>&1 || true
 fail() {
   gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:ready --remove-label status:in-progress >/dev/null 2>&1 || true
@@ -107,7 +115,8 @@ for r in "${reads[@]}"; do
 done
 # The model's process: no GitHub token, no gh login, no git credential helper, no prompts.
 NOCRED=$(mktemp -d "${TMPDIR:-/tmp}/lh-nocred.XXXXXX")
-trap 'rm -rf "$NOCRED"' EXIT
+RELAY_PID=
+trap 'rm -rf "$NOCRED"; [[ -z "$RELAY_PID" ]] || kill "$RELAY_PID" 2>/dev/null || true' EXIT
 model_env() {
   env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u ANTHROPIC_API_KEY \
     GH_CONFIG_DIR="$NOCRED" GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false \
@@ -121,6 +130,19 @@ cat >"$CACHE/model.settings.yml" <<YML
   extra_params:
     num_ctx: $LH_NUM_CTX
 YML
+[[ "$LH_THINK" == 1 ]] || echo "    think: false" >>"$CACHE/model.settings.yml"
+# Claude Code: with LH_THINK=0 it reaches Ollama through the relay that disables thinking.
+CLAUDE_BASE_URL="$OLLAMA_HOST"
+if [[ "$LH_HARNESS" == claude && "$LH_THINK" == 0 ]]; then
+  rm -f "$CACHE/nothink-relay.port"
+  python3 -I "$HERE/lh-nothink-relay.py" "$OLLAMA_HOST" >"$CACHE/nothink-relay.port" 2>"$CACHE/nothink-relay.log" &
+  RELAY_PID=$!
+  for _ in $(seq 50); do [[ -s "$CACHE/nothink-relay.port" ]] && break; sleep 0.1; done
+  relay_port=$(head -1 "$CACHE/nothink-relay.port" 2>/dev/null || true)
+  [[ "$relay_port" =~ ^[0-9]+$ ]] || die "thinking-off relay did not start (see $CACHE/nothink-relay.log)"
+  CLAUDE_BASE_URL="http://127.0.0.1:$relay_port"
+  log "Claude Code reaches the model through the thinking-off relay on port $relay_port"
+fi
 aider_run() {
   model_env OLLAMA_API_BASE="$OLLAMA_HOST" aider \
     --model "ollama_chat/$OLLAMA_MODEL" --model-settings-file "$CACHE/model.settings.yml" \
@@ -137,7 +159,7 @@ claude_run() {
   # An empty config dir: the user's plugins, skills and MCP servers alone overflow a 32k context.
   mkdir -p "$CACHE/claude-config"
   model_env CLAUDE_CONFIG_DIR="$CACHE/claude-config" \
-    ANTHROPIC_BASE_URL="$OLLAMA_HOST" ANTHROPIC_AUTH_TOKEN=ollama \
+    ANTHROPIC_BASE_URL="$CLAUDE_BASE_URL" ANTHROPIC_AUTH_TOKEN=ollama \
     ANTHROPIC_MODEL="$OLLAMA_MODEL" ANTHROPIC_DEFAULT_OPUS_MODEL="$OLLAMA_MODEL" \
     ANTHROPIC_DEFAULT_SONNET_MODEL="$OLLAMA_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$LH_BG_MODEL" \
     CLAUDE_CODE_SUBAGENT_MODEL="$OLLAMA_MODEL" CLAUDE_CODE_MAX_CONTEXT_TOKENS="$LH_NUM_CTX" \
@@ -153,10 +175,10 @@ PROMPT
 }
 model_run() { if [[ "$LH_HARNESS" == claude ]]; then claude_run "$1"; else aider_run "$1"; fi; }
 
+# shellcheck source=local/lh-prompts.sh
+source "$HERE/lh-prompts.sh"
 log "round 1: implementing the brief"
-model_run "You are the implementer for Linux Hello. Implement exactly this brief. Write the brief's tests first, then the code. Edit only the files you were given. Follow AGENTS.md (read-only). No unsafe code, no unwrap() or expect() outside tests, no new dependencies beyond those the brief names.
-
-$brief" || fail "$LH_HARNESS failed"
+model_run "$(lh_implement_prompt "$brief")" || fail "$LH_HARNESS failed"
 
 # 3. Gates, plus "every test the brief names exists", with up to FIX_ROUNDS repair rounds.
 missing_tests() {
@@ -183,9 +205,7 @@ until out=$(gates 2>&1); do
   round=$((round + 1))
   [[ $round -le $FIX_ROUNDS ]] || { printf '%s\n' "$out" | tail -60; fail "gates still failing after $FIX_ROUNDS repair rounds"; }
   log "gates failed; repair round $round"
-  model_run "The gates failed. Fix the cause in the files you were given; do not weaken tests, lints or checks.
-
-$(printf '%s\n' "$out" | tail -80)" || fail "$LH_HARNESS failed"
+  model_run "$(lh_repair_prompt "$brief" "$out")" || fail "$LH_HARNESS failed"
 done
 log "gates pass"
 
