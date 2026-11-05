@@ -9,6 +9,10 @@
 #   OLLAMA_MODEL    model the harness uses    LH_NUM_CTX  context window Ollama serves it with
 #   LH_BG_MODEL     Claude Code's background-call model (default: OLLAMA_MODEL)
 #   LH_MAX_TURNS    Claude Code turn limit per round
+#   LH_MAX_OUTPUT   Claude Code's cap on one reply, in tokens (default 12000). Claude Code compacts
+#                   at LH_NUM_CTX - min(LH_MAX_OUTPUT, 20000) - 13000: at its default reserve of 20000
+#                   a 64k window compacted at 32.5k, which left the model about 15k tokens to work in
+#                   and thrashed on #38. 12000 moves it to 40.5k; the largest reply on #38 was 7k.
 #   LH_THINK        0 = the model does not think (default), in both harnesses; 1 = Ollama's default.
 #                   Thinking took 20-40k tokens per reply on #38 and overflowed a 64k window in both.
 #                   Aider: think: false. Claude Code cannot switch it off, so it talks to Ollama
@@ -36,6 +40,7 @@ set -euo pipefail
 : "${LH_NUM_CTX:=65536}"
 : "${LH_BG_MODEL:=$OLLAMA_MODEL}"
 : "${LH_MAX_TURNS:=60}"
+: "${LH_MAX_OUTPUT:=12000}"
 : "${LH_UNATTENDED:=0}"
 : "${LH_THINK:=0}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -49,7 +54,8 @@ num=${1:-}; [[ "$num" =~ ^[0-9]+$ ]] || die "usage: $0 <issue>"
 [[ -d "$HOME/.cargo/bin" ]] && PATH="$HOME/.cargo/bin:$PATH"
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 case "$LH_HARNESS" in aider|claude) ;; *) die "LH_HARNESS must be aider or claude, got '$LH_HARNESS'" ;; esac
-[[ "$LH_NUM_CTX" =~ ^[0-9]+$ && "$LH_MAX_TURNS" =~ ^[0-9]+$ ]] || die "LH_NUM_CTX and LH_MAX_TURNS must be numbers"
+[[ "$LH_NUM_CTX" =~ ^[0-9]+$ && "$LH_MAX_TURNS" =~ ^[0-9]+$ && "$LH_MAX_OUTPUT" =~ ^[0-9]+$ ]] \
+  || die "LH_NUM_CTX, LH_MAX_TURNS and LH_MAX_OUTPUT must be numbers"
 [[ "$LH_UNATTENDED" == 0 || "$LH_UNATTENDED" == 1 ]] || die "LH_UNATTENDED must be 0 or 1"
 [[ "$LH_THINK" == 0 || "$LH_THINK" == 1 ]] || die "LH_THINK must be 0 or 1"
 harness_cmd=aider; [[ "$LH_HARNESS" == claude ]] && harness_cmd=claude
@@ -155,6 +161,8 @@ aider_run() {
 }
 # Claude Code: every model slot on the local model, the context it is served with, edits only,
 # cargo as the only command. The brief's files and read-only files are named in the prompt.
+# --tools sends only the six tools the model needs: all built-in tools cost 15.3k tokens of the
+# window per request, these six 9.0k (measured on Claude Code 2.1.318). LH_MAX_OUTPUT: see the header.
 claude_run() {
   # An empty config dir: the user's plugins, skills and MCP servers alone overflow a 32k context.
   mkdir -p "$CACHE/claude-config"
@@ -163,8 +171,10 @@ claude_run() {
     ANTHROPIC_MODEL="$OLLAMA_MODEL" ANTHROPIC_DEFAULT_OPUS_MODEL="$OLLAMA_MODEL" \
     ANTHROPIC_DEFAULT_SONNET_MODEL="$OLLAMA_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$LH_BG_MODEL" \
     CLAUDE_CODE_SUBAGENT_MODEL="$OLLAMA_MODEL" CLAUDE_CODE_MAX_CONTEXT_TOKENS="$LH_NUM_CTX" \
+    CLAUDE_CODE_MAX_OUTPUT_TOKENS="$LH_MAX_OUTPUT" \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     claude -p --model "$OLLAMA_MODEL" --max-turns "$LH_MAX_TURNS" --permission-mode acceptEdits \
+      --tools Read Grep Glob Edit Write Bash \
       --allowedTools Read Grep Glob Edit Write 'Bash(cargo test:*)' 'Bash(cargo build:*)' 'Bash(cargo check:*)' <<PROMPT
 $1
 
