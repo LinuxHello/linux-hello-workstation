@@ -149,11 +149,15 @@ if [[ "$LH_HARNESS" == claude && "$LH_THINK" == 0 ]]; then
   CLAUDE_BASE_URL="http://127.0.0.1:$relay_port"
   log "Claude Code reaches the model through the thinking-off relay on port $relay_port"
 fi
+# --no-detect-urls: Aider offers to fetch every URL in the conversation, and --yes-always accepts.
+# Each clippy error ends with a link to its lint page, so a repair round pasted Clippy's lint
+# documentation into the prompt: 598k tokens for a 64k window on #39, likely also the 294k on #54 (trial 2).
 aider_run() {
   model_env OLLAMA_API_BASE="$OLLAMA_HOST" aider \
     --model "ollama_chat/$OLLAMA_MODEL" --model-settings-file "$CACHE/model.settings.yml" \
     --no-auto-commits --no-dirty-commits --no-gitignore --yes-always \
     --no-check-update --analytics-disable --no-show-model-warnings \
+    --no-detect-urls \
     --chat-history-file "$CACHE/${LH_BRANCH//\//_}.chat.md" --input-history-file "$CACHE/${LH_BRANCH//\//_}.input" \
     --map-tokens 1024 \
     --test-cmd "cargo test --workspace -q" --auto-test \
