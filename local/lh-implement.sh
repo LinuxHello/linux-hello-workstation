@@ -197,8 +197,17 @@ model_run() { if [[ "$LH_HARNESS" == claude ]]; then claude_run "$1"; else aider
 
 # shellcheck source=local/lh-prompts.sh
 source "$HERE/lh-prompts.sh"
+# shellcheck source=local/lh-guard.sh
+source "$HERE/lh-guard.sh"
+# Stop at once when a brief file holds a second copy of itself: no repair round has recovered
+# from one, and its compile errors flood the next prompt (see lh-guard.sh).
+no_duplicated_files() {
+  local dup; dup=$(lh_duplicated_files "${files[@]}")
+  [[ -z "$dup" ]] || fail "after $1, these files hold a second copy of themselves (an edit appended to an existing file): $(tr '\n' ' ' <<<"$dup")"
+}
 log "round 1: implementing the brief"
 model_run "$(lh_implement_prompt "$brief")" || fail "$LH_HARNESS failed"
+no_duplicated_files "round 1"
 
 # 3. Gates, plus "every test the brief names exists", with up to FIX_ROUNDS repair rounds.
 # shellcheck source=local/lh-brief.sh
@@ -227,6 +236,7 @@ until out=$(gates 2>&1); do
   [[ $round -le $FIX_ROUNDS ]] || { printf '%s\n' "$out" | tail -60; fail "gates still failing after $FIX_ROUNDS repair rounds"; }
   log "gates failed; repair round $round"
   model_run "$(lh_repair_prompt "$brief" "$out")" || fail "$LH_HARNESS failed"
+  no_duplicated_files "repair round $round"
 done
 log "gates pass"
 
