@@ -27,7 +27,10 @@ fi
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
 : "${REPO_SLUG:=LinuxHello/linux-hello}"
 : "${OLLAMA_HOST:=http://127.0.0.1:11434}"
-: "${OLLAMA_MODEL:?set OLLAMA_MODEL in $env_file}"
+if [[ -z "${OLLAMA_MODEL:-}" ]]; then
+  [[ -f "$env_file" ]] && die "set OLLAMA_MODEL in $env_file"
+  die "$env_file does not exist: run 'make implementer-env' to create it, then check OLLAMA_MODEL in it"
+fi
 : "${LH_BG_MODEL:=$OLLAMA_MODEL}"
 : "${LH_MAX_ATTEMPTS:=3}"
 : "${LH_RUN_TIMEOUT:=2h}"

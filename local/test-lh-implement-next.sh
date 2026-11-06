@@ -105,6 +105,12 @@ issue 14 3 yes
 run env LH_BACKLOG="$FIX/nonexistent"
 if [[ $status != 0 && -z "$(implemented)" ]] && grep -q 'update the clone' <<<"$out"; then ok "$t"; else nok "$t" "status $status"; fi
 
+t=missing_env_file_says_how_to_create_it
+new_case "$t"
+issue 14 3 yes
+run env LH_ENV_FILE="$FIX/nonexistent.env" OLLAMA_MODEL=
+if [[ $status != 0 && -z "$(implemented)" ]] && grep -q "make implementer-env" <<<"$out"; then ok "$t"; else nok "$t" "status $status"; fi
+
 t=gpu_busy_with_another_model_claims_nothing
 new_case "$t"
 issue 14 3 yes
