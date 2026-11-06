@@ -12,7 +12,7 @@ Every task is a `make` target; `make help` lists them. This page says **when** t
 | Set labels and blocked-by links from `issues/triage.tsv` | `make triage`, then `make triage APPLY=1` | Labels and links on GitHub |
 | Refresh the Roadmap board | `make board` | The board only |
 | Certify a pull request I reviewed | `make signoff PR=<n>`, then merge on GitHub | Rewrites the PR branch with your sign-off |
-| Code with Claude locally, unbilled | `make claude` | No |
+| Code with Claude locally, unbilled | `make claude-gpu` (fast) or `make claude-cpu` (128k window, slow) | No |
 | Run the implementer on one issue | `make implement ISSUE=<n>` (`HARNESS=claude` for Claude Code) | Branch, draft PR, labels |
 | Run one unattended tick by hand | `make implement-next` | As above, for the next ready issue |
 | Throw away local changes in the clone | `make reset` | Clone only; rescues uncommitted work first |
