@@ -101,7 +101,7 @@ One tick of `local/lh-implement-next.sh`:
 
 2. As that user: clone this repository and `LinuxHello/linux-hello`, set a git identity, and log `gh` in with a fine-grained token limited to `LinuxHello/linux-hello`: contents, pull requests and issues read and write, nothing else. You create the token; no agent sees it.
 3. Install Aider (`local/install-aider.sh`) and/or Claude Code, cargo, `cargo-deny`, jq and curl for that user.
-4. Copy `local/implementer.env.example` to `~/.config/linux-hello/implementer.env` and fill it in.
+4. As that user, run `make implementer-env` in this checkout. It creates `~/.config/linux-hello/implementer.env` (mode 600) from `local/implementer.env.example` with this checkout, the clone and the default model filled in, and never overwrites an existing file; `make all` runs it too. Check the values, in particular `OLLAMA_MODEL`.
 5. Install and start the timer:
 
    ```sh

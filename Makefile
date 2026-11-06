@@ -12,7 +12,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude-gpu claude-cpu implement implement-next reset test \
+        claude-gpu claude-cpu implement implement-next implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -29,6 +29,7 @@ help:
 	@echo "  make claude-cpu           the same on the CPU-only Ollama (gemma4 128k, slow)"
 	@echo "  make implement ISSUE=<n> [HARNESS=aider|claude]   implement one issue from its brief"
 	@echo "  make implement-next       one tick of the unattended loop, by hand"
+	@echo "  make implementer-env      create ~/.config/linux-hello/implementer.env (never overwrites; make all does this too)"
 	@echo "  make reset                clean the clone (rescues uncommitted work first)"
 	@echo
 	@echo "Checks"
@@ -36,6 +37,7 @@ help:
 	@echo
 	@echo "Once: organisation and repository setup (done; idempotent if re-run)"
 	@echo "  make preflight | org | repo | seed | protect | labels | security | sonar | verify | all"
+	@echo "  (all also runs implementer-env)"
 
 # --- Daily ----------------------------------------------------------------------------------
 $(BACKLOG):
@@ -56,6 +58,7 @@ implement:
 	@test -n "$(ISSUE)" || { echo "usage: make implement ISSUE=<number> [HARNESS=aider|claude]"; exit 1; }
 	@LH_HARNESS=$${HARNESS:-$${LH_HARNESS:-aider}} bash local/lh-implement.sh $(ISSUE)
 implement-next: ; @bash local/lh-implement-next.sh
+implementer-env: ; @bash scripts/implementer-env.sh
 reset: ; @bash local/lh-reset.sh
 
 # --- Checks ---------------------------------------------------------------------------------
@@ -67,11 +70,12 @@ test:
 	bash local/test-lh-guard.sh
 	bash local/test-lh-nothink-relay.sh
 	bash scripts/test-triage.sh
+	bash scripts/test-implementer-env.sh
 	@if command -v shellcheck >/dev/null; then shellcheck -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
 	 else echo "shellcheck not installed: sudo apt install shellcheck"; fi
 
 # --- Once -----------------------------------------------------------------------------------
-all: preflight org repo seed protect verify
+all: preflight org repo seed protect verify implementer-env
 preflight: ; @bash scripts/preflight.sh
 org: preflight ; @bash scripts/org.sh
 repo: preflight ; @bash scripts/repo.sh
