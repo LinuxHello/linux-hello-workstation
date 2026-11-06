@@ -22,7 +22,7 @@ help:
 	@echo "  make backlog-check        open issues missing a status: or priority: label"
 	@echo "  make triage [APPLY=1]     apply issues/triage.tsv: labels and blocked-by links (dry run without APPLY=1)"
 	@echo "  make board                mirror the issues onto the Roadmap project board"
-	@echo "  make signoff PR=<n>       certify a reviewed PR's commits with your DCO sign-off"
+	@echo "  make signoff PR=<n> [REPO=<repo>]   certify a reviewed PR's commits with your DCO sign-off (default: $(REPO))"
 	@echo
 	@echo "Implementer on this workstation (attended)"
 	@echo "  make claude-gpu           Claude Code on the GPU Ollama (gemma4 64k), never the billed account"
@@ -71,6 +71,7 @@ test:
 	bash local/test-lh-nothink-relay.sh
 	bash scripts/test-triage.sh
 	bash scripts/test-implementer-env.sh
+	bash scripts/test-dco-signoff.sh
 	@if command -v shellcheck >/dev/null; then shellcheck -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
 	 else echo "shellcheck not installed: sudo apt install shellcheck"; fi
 
