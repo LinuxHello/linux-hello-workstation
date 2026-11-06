@@ -12,12 +12,12 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude implement implement-next reset test \
+        claude-gpu claude-cpu implement implement-next reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
 	@echo "Daily: backlog and merges (maintainer)"
-	@echo "  make next                 the next issue in each lane"
+	@echo "  make next                 the next issue in each lane, and the command that starts it"
 	@echo "  make backlog              every open issue, by lane, in pick-up order"
 	@echo "  make backlog-check        open issues missing a status: or priority: label"
 	@echo "  make triage [APPLY=1]     apply issues/triage.tsv: labels and blocked-by links (dry run without APPLY=1)"
@@ -25,7 +25,8 @@ help:
 	@echo "  make signoff PR=<n>       certify a reviewed PR's commits with your DCO sign-off"
 	@echo
 	@echo "Implementer on this workstation (attended)"
-	@echo "  make claude               Claude Code on the local model, never the billed account"
+	@echo "  make claude-gpu           Claude Code on the GPU Ollama (gemma4 64k), never the billed account"
+	@echo "  make claude-cpu           the same on the CPU-only Ollama (gemma4 128k, slow)"
 	@echo "  make implement ISSUE=<n> [HARNESS=aider|claude]   implement one issue from its brief"
 	@echo "  make implement-next       one tick of the unattended loop, by hand"
 	@echo "  make reset                clean the clone (rescues uncommitted work first)"
@@ -39,7 +40,7 @@ help:
 # --- Daily ----------------------------------------------------------------------------------
 $(BACKLOG):
 	@echo "$(BACKLOG) missing: clone $(REPO_SLUG) to $(CLONE_DIR) and pull main" >&2; exit 1
-next: $(BACKLOG) ; @bash $(BACKLOG) next
+next: $(BACKLOG) ; @bash scripts/next.sh $(BACKLOG)
 backlog: $(BACKLOG) ; @bash $(BACKLOG) list
 backlog-check: $(BACKLOG) ; @bash $(BACKLOG) check
 triage: ; @bash scripts/triage.sh
@@ -49,7 +50,8 @@ signoff:
 	@bash scripts/dco-signoff.sh $(PR)
 
 # --- Implementer ----------------------------------------------------------------------------
-claude: ; @bash local/claude-local.sh
+claude-gpu: ; @bash local/claude-local-gpu.sh
+claude-cpu: ; @bash local/claude-local-cpu.sh
 implement:
 	@test -n "$(ISSUE)" || { echo "usage: make implement ISSUE=<number> [HARNESS=aider|claude]"; exit 1; }
 	@LH_HARNESS=$${HARNESS:-$${LH_HARNESS:-aider}} bash local/lh-implement.sh $(ISSUE)

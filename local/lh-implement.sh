@@ -22,6 +22,12 @@
 #                   Aider appends it: query.rs, view.rs, merge.rs and restrict.rs each ended up
 #                   holding copies of themselves (#40, #85, #62, #61). In whole format every reply
 #                   replaces the file, so nothing is appended; replies are larger.
+#   LH_MAX_FILES_BYTES  refuse a brief whose edited files total more than this (default 100000,
+#                   about 30k tokens): Aider sends them whole on every request.
+#   LH_READ_MAX_BYTES / LH_READ_MAX_FILES  read-only files Aider gets beyond AGENTS.md: each at most
+#                   this size (default 8000) and at most this many (default 2). The old 20000 x 3
+#                   could be 20k tokens of a 64k window. Prompts reached 65,462 of 65,536 tokens
+#                   (Ollama journal, 2026-11-06).
 #   LH_UNATTENDED   1 = nobody reviews before commit: no Signed-off-by, no signing requirement (ADR-0007)
 #   LH_BRANCH       branch to work on and push (default issue-<n>); the harness trials run each
 #                   brief twice, e.g. LH_BRANCH=issue-53-aider and LH_BRANCH=issue-53-claude
@@ -49,6 +55,9 @@ set -euo pipefail
 : "${LH_UNATTENDED:=0}"
 : "${LH_THINK:=0}"
 : "${LH_AIDER_EDIT_FORMAT:=whole}"
+: "${LH_MAX_FILES_BYTES:=100000}"
+: "${LH_READ_MAX_BYTES:=8000}"
+: "${LH_READ_MAX_FILES:=2}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/linux-hello-aider"
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -100,12 +109,17 @@ print("\n".join(seen))
 PY
 )
 [[ ${#files[@]} -gt 0 && ${#files[@]} -le 5 ]] || die "brief must list 1-5 files under **Files:**, found ${#files[@]}"
-mapfile -t reads < <(python3 - "$brief" <<'PY'
+files_bytes=0
+for f in "${files[@]}"; do [[ -f "$f" ]] && files_bytes=$((files_bytes + $(stat -c %s "$f"))); done
+[[ $files_bytes -le $LH_MAX_FILES_BYTES ]] \
+  || die "the brief's files total $files_bytes bytes (limit $LH_MAX_FILES_BYTES, LH_MAX_FILES_BYTES): they do not fit a $LH_NUM_CTX-token window beside the prompt; split the brief"
+mapfile -t reads < <(LH_READ_MAX_BYTES="$LH_READ_MAX_BYTES" LH_READ_MAX_FILES="$LH_READ_MAX_FILES" python3 - "$brief" <<'PY'
 import os, re, sys
+limit, count = int(os.environ["LH_READ_MAX_BYTES"]), int(os.environ["LH_READ_MAX_FILES"])
 out = []
 for p in re.findall(r"(?:\.\./)*([a-z0-9_-]+(?:/[A-Za-z0-9_.-]+)+\.(?:rs|toml|md))", sys.argv[1]):
-    if os.path.isfile(p) and os.path.getsize(p) < 20000 and p not in out: out.append(p)
-print("\n".join(out[:3]))
+    if os.path.isfile(p) and os.path.getsize(p) < limit and p not in out: out.append(p)
+print("\n".join(out[:count]))
 PY
 )
 log "issue #$num: $title"
@@ -145,6 +159,12 @@ cat >"$CACHE/model.settings.yml" <<YML
     num_ctx: $LH_NUM_CTX
 YML
 [[ "$LH_THINK" == 1 ]] || echo "    think: false" >>"$CACHE/model.settings.yml"
+# Aider reads a model's window from litellm metadata, and for an Ollama model it takes the
+# native 262,144, so it never trimmed history or the repo map to the 65,536 Ollama serves and
+# only warned at ~300k tokens. Tell it the real window.
+jq -n --arg m "ollama_chat/$OLLAMA_MODEL" --argjson ctx "$LH_NUM_CTX" \
+  '{($m): {max_input_tokens: $ctx, max_tokens: 8192, max_output_tokens: 8192, litellm_provider: "ollama_chat", mode: "chat"}}' \
+  >"$CACHE/model.metadata.json"
 # Claude Code: with LH_THINK=0 it reaches Ollama through the relay that disables thinking.
 CLAUDE_BASE_URL="$OLLAMA_HOST"
 if [[ "$LH_HARNESS" == claude && "$LH_THINK" == 0 ]]; then
@@ -163,12 +183,13 @@ fi
 aider_run() {
   model_env OLLAMA_API_BASE="$OLLAMA_HOST" aider \
     --model "ollama_chat/$OLLAMA_MODEL" --model-settings-file "$CACHE/model.settings.yml" \
+    --model-metadata-file "$CACHE/model.metadata.json" \
     --no-auto-commits --no-dirty-commits --no-gitignore --yes-always \
     --no-check-update --analytics-disable --no-show-model-warnings \
     --no-detect-urls \
     --chat-history-file "$CACHE/${LH_BRANCH//\//_}.chat.md" --input-history-file "$CACHE/${LH_BRANCH//\//_}.input" \
     --map-tokens 1024 \
-    --test-cmd "cargo test --workspace -q" --auto-test \
+    --test-cmd "bash -o pipefail -c 'cargo test --workspace -q 2>&1 | cut -c1-300 | tail -n 60'" --auto-test \
     "${read_args[@]}" --message "$1" "${files[@]}"
 }
 # Claude Code: every model slot on the local model, the context it is served with, edits only,

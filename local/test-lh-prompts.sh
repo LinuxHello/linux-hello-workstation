@@ -32,5 +32,11 @@ if [[ "${p##*"$brief"}" == *"Gate output"* ]]; then
   ok repair_prompt_puts_the_gate_output_after_the_brief
 else nok repair_prompt_puts_the_gate_output_after_the_brief "gate output precedes the brief"; fi
 
+# Long lines and a long output are bounded: 80 lines of 5000 characters must not reach the prompt whole.
+long=$(for i in $(seq 1 80); do printf 'x%.0s' $(seq 1 5000); echo; done)
+p=$(lh_repair_prompt "$brief" "$long")
+if [[ ${#p} -lt $((${#brief} + 14000)) ]]; then ok repair_prompt_bounds_long_gate_output
+else nok repair_prompt_bounds_long_gate_output "prompt is ${#p} characters"; fi
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
