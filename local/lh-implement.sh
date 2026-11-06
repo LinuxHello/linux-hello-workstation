@@ -17,6 +17,11 @@
 #                   Thinking took 20-40k tokens per reply on #38 and overflowed a 64k window in both.
 #                   Aider: think: false. Claude Code cannot switch it off, so it talks to Ollama
 #                   through local/lh-nothink-relay.py, which sets thinking to disabled.
+#   LH_AIDER_EDIT_FORMAT  whole (default) | diff: how Aider applies the model's edits. In diff
+#                   format a block with an empty SEARCH creates a file, and on an existing file
+#                   Aider appends it: query.rs, view.rs, merge.rs and restrict.rs each ended up
+#                   holding copies of themselves (#40, #85, #62, #61). In whole format every reply
+#                   replaces the file, so nothing is appended; replies are larger.
 #   LH_UNATTENDED   1 = nobody reviews before commit: no Signed-off-by, no signing requirement (ADR-0007)
 #   LH_BRANCH       branch to work on and push (default issue-<n>); the harness trials run each
 #                   brief twice, e.g. LH_BRANCH=issue-53-aider and LH_BRANCH=issue-53-claude
@@ -43,6 +48,7 @@ set -euo pipefail
 : "${LH_MAX_OUTPUT:=12000}"
 : "${LH_UNATTENDED:=0}"
 : "${LH_THINK:=0}"
+: "${LH_AIDER_EDIT_FORMAT:=whole}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/linux-hello-aider"
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -58,6 +64,8 @@ case "$LH_HARNESS" in aider|claude) ;; *) die "LH_HARNESS must be aider or claud
   || die "LH_NUM_CTX, LH_MAX_TURNS and LH_MAX_OUTPUT must be numbers"
 [[ "$LH_UNATTENDED" == 0 || "$LH_UNATTENDED" == 1 ]] || die "LH_UNATTENDED must be 0 or 1"
 [[ "$LH_THINK" == 0 || "$LH_THINK" == 1 ]] || die "LH_THINK must be 0 or 1"
+[[ "$LH_AIDER_EDIT_FORMAT" == whole || "$LH_AIDER_EDIT_FORMAT" == diff ]] \
+  || die "LH_AIDER_EDIT_FORMAT must be whole or diff, got '$LH_AIDER_EDIT_FORMAT'"
 harness_cmd=aider; [[ "$LH_HARNESS" == claude ]] && harness_cmd=claude
 for c in "$harness_cmd" gh git jq python3 cargo curl; do command -v "$c" >/dev/null || die "$c not installed (aider: bash $HERE/install-aider.sh)"; done
 gh auth status >/dev/null 2>&1 || die "gh not authenticated"
@@ -132,7 +140,7 @@ model_env() {
 # Aider: fix the context at the size Ollama serves, so a request never grows the KV cache.
 cat >"$CACHE/model.settings.yml" <<YML
 - name: ollama_chat/$OLLAMA_MODEL
-  edit_format: diff
+  edit_format: $LH_AIDER_EDIT_FORMAT
   extra_params:
     num_ctx: $LH_NUM_CTX
 YML
