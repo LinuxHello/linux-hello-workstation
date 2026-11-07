@@ -44,9 +44,9 @@ cmd_image() {
   mkdir -p "$LH_VM_DIR"
   local name; name="$(basename "$base_img")"
   log "fetching the checksums for $name"
-  curl -fsSL "$base_url/SHA256SUMS" -o "$LH_VM_DIR/SHA256SUMS"
+  curl --proto '=https' --tlsv1.2 -fsSL "$base_url/SHA256SUMS" -o "$LH_VM_DIR/SHA256SUMS"
   if [[ -f /usr/share/keyrings/ubuntu-archive-keyring.gpg ]] && command -v gpgv >/dev/null; then
-    curl -fsSL "$base_url/SHA256SUMS.gpg" -o "$LH_VM_DIR/SHA256SUMS.gpg"
+    curl --proto '=https' --tlsv1.2 -fsSL "$base_url/SHA256SUMS.gpg" -o "$LH_VM_DIR/SHA256SUMS.gpg"
     gpgv --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg "$LH_VM_DIR/SHA256SUMS.gpg" "$LH_VM_DIR/SHA256SUMS" 2>/dev/null \
       || die "the signature on SHA256SUMS does not verify; not using this download"
     log "SHA256SUMS signature verified"
@@ -59,7 +59,7 @@ cmd_image() {
     log "$base_img is present and matches"; return 0
   fi
   log "downloading $base_url/$name"
-  curl -fL --progress-bar "$base_url/$name" -o "$base_img.part"
+  curl --proto '=https' --tlsv1.2 -fL --progress-bar "$base_url/$name" -o "$base_img.part"
   [[ "$(sha256sum "$base_img.part" | cut -d' ' -f1)" == "$want" ]] || { rm -f "$base_img.part"; die "checksum mismatch; download discarded"; }
   mv "$base_img.part" "$base_img"
   log "image ready: $base_img"
