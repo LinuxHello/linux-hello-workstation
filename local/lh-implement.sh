@@ -104,7 +104,14 @@ import os, re, sys
 text = sys.argv[1]
 m = re.search(r"(?:\*\*Files:\*\*|^#{2,}[ \t]*(?:\d+\.[ \t]*)?Files[ \t]*$)(.*?)(?=^#{1,6}[ \t]|\n\*\*[A-Z]|\Z)", text, re.S | re.M)
 seen = []
-for p in re.findall(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|md|txt|yml|yaml|json))`", m.group(1) if m else ""):
+section = m.group(1) if m else ""
+ext = r"`([A-Za-z0-9_./-]+\.(?:rs|toml|md|txt|yml|yaml|json|sh))`"
+# A file is a list item that starts with its path; prose such as "never edit `x.yml`" is not a file.
+# Briefs with no such list items fall back to every quoted path in the section.
+found = [mm.group(1) for line in section.splitlines() if (mm := re.match(r"\s*[-*]\s+" + ext, line))]
+if not found:
+    found = re.findall(ext, section)
+for p in found:
     if ("/" in p or p.endswith(".toml")) and not os.path.isdir(p) and p not in seen: seen.append(p)
 if seen: print("\n".join(seen))
 PY
