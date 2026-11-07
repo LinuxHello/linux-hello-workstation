@@ -87,6 +87,9 @@ users:
       - $(cat "$key.pub")
 package_update: true
 packages: [build-essential, pkg-config, libtss2-dev, clang, libclang-dev, tpm2-tools, rsync, git, curl, udev]
+# The cloud image's kernel has no uhid module; it is in linux-modules-extra (found on the first boot, 2026-11-08).
+runcmd:
+  - [bash, -c, "apt-get install -y linux-modules-extra-\$(uname -r) && modprobe uhid && echo uhid > /etc/modules-load.d/uhid.conf"]
 EOF
     printf 'instance-id: lh-vm-%s\nlocal-hostname: lh-vm\n' "$(date +%s)" >"$LH_VM_DIR/meta-data"
     cloud-localds "$seed" "$LH_VM_DIR/user-data" "$LH_VM_DIR/meta-data"

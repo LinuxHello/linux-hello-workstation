@@ -38,5 +38,11 @@ if grep -q 'keyrings/ubuntu-cloudimage-keyring.gpg' "$here/vm.sh" && ! grep -q '
   ok signature_is_checked_against_the_cloud_image_keyring
 else nok signature_is_checked_against_the_cloud_image_keyring "vm.sh names the wrong keyring"; fi
 
+# The user-data heredoc is unquoted, so "$(uname -r)" would run on the host and name the host's
+# kernel (it did on 2026-11-08: linux-modules-extra-7.0.0-43-generic did not exist in the guest).
+if grep -q 'linux-modules-extra-\\\$(uname -r)' "$here/vm.sh"; then
+  ok the_guest_kernel_version_is_not_expanded_on_the_host
+else nok the_guest_kernel_version_is_not_expanded_on_the_host "vm.sh must escape the dollar sign"; fi
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
