@@ -55,7 +55,62 @@ user_cannot_override_admin_setting
 pin_is_always_allowed
 biometrics_disabled_leaves_only_pin'
 
+# Shape of the #89 brief: a "### 3. Properties and tests first" heading, test fns in a code block.
+b89='### 2. Files
+
+- `crates/x/src/lib.rs`: the tests.
+
+### 3. Properties and tests first
+
+The property: names. Write both tests first.
+
+```rust
+#[test]
+fn agent_names_use_the_reserved_prefix() {
+    assert!(true);
+}
+
+#[test]
+fn agent_names_are_the_ones_in_adr_0012() {
+    assert!(true);
+}
+```
+
+Keep `object_path_matches_bus_name` as it is.
+
+### 4. Constraints
+
+- `some_constraint_name` is not a test.'
+expect heading_with_tests_first_and_fns_in_a_code_block "$b89" 'agent_names_use_the_reserved_prefix
+agent_names_are_the_ones_in_adr_0012'
+
+# Shape of the #95 brief: the same heading, tests as bullets, for a shell test file.
+b95='### 3. Properties and tests first
+
+Then one `check` line per case:
+
+- `docs_only_change_is_docs`: `rust=false` for `docs/adr/0001-x.md`.
+- `any_code_path_is_code`: `rust=true` for each of `Cargo.lock`, `architecture`.
+
+### 4. Constraints
+
+- `fail_closed_rule` is not a test.'
+expect heading_with_bullet_names_for_a_shell_test_file "$b95" 'docs_only_change_is_docs
+any_code_path_is_code'
+
 expect brief_without_tests_first_names_no_tests '**Goal:** `not_a_test_name` here.' ''
+
+# lh_tests_in_diff: Rust fn, shell function and quoted case name are found; a mere mention is not.
+work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+( cd "$work" && git init -q -b main && git config user.email a@b && git config user.name n \
+  && echo base > f && git add f && git commit -qm base && git update-ref refs/remotes/origin/main HEAD \
+  && printf '%s\n' 'fn rust_test_name() {}' 'shell_test_name() {' 'check "quoted_case_name" x' '// mentions only_mentioned_name' > t.txt ) >/dev/null
+got=$(cd "$work" && lh_tests_in_diff found "rust_test_name shell_test_name quoted_case_name only_mentioned_name")
+if [[ "$got" == "rust_test_name shell_test_name quoted_case_name" ]]; then ok fn_function_and_quoted_names_are_found
+else nok fn_function_and_quoted_names_are_found "got [$got]"; fi
+got=$(cd "$work" && lh_tests_in_diff missing "rust_test_name only_mentioned_name absent_name")
+if [[ "$got" == "only_mentioned_name absent_name" ]]; then ok a_mention_or_absence_is_missing
+else nok a_mention_or_absence_is_missing "got [$got]"; fi
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
