@@ -273,15 +273,7 @@ no_duplicated_files "round 1"
 # 3. Gates, plus "every test the brief names exists", with up to FIX_ROUNDS repair rounds.
 # shellcheck source=local/lh-brief.sh
 source "$HERE/lh-brief.sh"
-missing_tests() {
-  python3 - "$(lh_brief_test_names "$brief")" <<'PY'
-import re, subprocess, sys
-names = sys.argv[1].split()
-subprocess.run(["git", "add", "-N", "."], check=False)
-diff = subprocess.run(["git", "diff", "origin/main"], capture_output=True, text=True).stdout
-print(" ".join(n for n in names if not re.search(r"^\+\s*fn " + re.escape(n) + r"\s*\(", diff, re.M)))
-PY
-}
+missing_tests() { lh_tests_in_diff missing "$(lh_brief_test_names "$brief")"; }
 gates() {
   cargo fmt --all &&
   cargo fmt --all --check &&
@@ -326,18 +318,11 @@ Assisted-by: $tool with a local model
 MSG
 git push -q -u origin "$LH_BRANCH"
 
-tests_report=$(python3 - "$brief" <<'PY'
-import re, subprocess, sys
-m = re.search(r"\*\*Tests first\*\*(.*?)(?:\n\*\*[A-Z]|\Z)", sys.argv[1], re.S)
-names = []
-for n in re.findall(r"`([a-z][a-z0-9_]+)`", m.group(1) if m else ""):
-    if n.count("_") >= 2 and n not in names: names.append(n)
-diff = subprocess.run(["git", "diff", "origin/main...HEAD"], capture_output=True, text=True).stdout
-for n in names:
-    found = re.search(r"^\+\s*fn " + re.escape(n) + r"\s*\(", diff, re.M)
-    print(f"- [{'x' if found else ' '}] `{n}`")
-PY
-)
+tests_names=$(lh_brief_test_names "$brief")
+tests_found=" $(lh_tests_in_diff found "$tests_names") "
+tests_report=$(for n in $tests_names; do
+  if [[ "$tests_found" == *" $n "* ]]; then echo "- [x] \`$n\`"; else echo "- [ ] \`$n\`"; fi
+done)
 pr_url=$(gh pr list --repo "$REPO_SLUG" --head "$LH_BRANCH" --state open --json url --jq '.[0].url // empty')
 if [[ -z "$pr_url" ]]; then
   # shellcheck disable=SC2016  # backticks in the PR body are literal Markdown
