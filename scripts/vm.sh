@@ -16,7 +16,7 @@
 # only, no inbound access from the LAN. Everything lives in $LH_VM_DIR; nothing outside it changes.
 # Needs: qemu-system-x86, qemu-utils, swtpm, cloud-image-utils (cloud-localds), openssh-client,
 # rsync, curl, gpg (the image checksums are verified against Canonical's signing key when the
-# ubuntu-keyring package is present).
+# ubuntu-keyring package is present; cloud images are signed with the cloud-image key, not the archive key).
 set -euo pipefail
 source "$(dirname "$0")/../common.sh"
 
@@ -45,13 +45,13 @@ cmd_image() {
   local name; name="$(basename "$base_img")"
   log "fetching the checksums for $name"
   curl --proto '=https' --tlsv1.2 -fsSL "$base_url/SHA256SUMS" -o "$LH_VM_DIR/SHA256SUMS"
-  if [[ -f /usr/share/keyrings/ubuntu-archive-keyring.gpg ]] && command -v gpgv >/dev/null; then
+  if [[ -f /usr/share/keyrings/ubuntu-cloudimage-keyring.gpg ]] && command -v gpgv >/dev/null; then
     curl --proto '=https' --tlsv1.2 -fsSL "$base_url/SHA256SUMS.gpg" -o "$LH_VM_DIR/SHA256SUMS.gpg"
-    gpgv --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg "$LH_VM_DIR/SHA256SUMS.gpg" "$LH_VM_DIR/SHA256SUMS" 2>/dev/null \
+    gpgv --keyring /usr/share/keyrings/ubuntu-cloudimage-keyring.gpg "$LH_VM_DIR/SHA256SUMS.gpg" "$LH_VM_DIR/SHA256SUMS" 2>/dev/null \
       || die "the signature on SHA256SUMS does not verify; not using this download"
     log "SHA256SUMS signature verified"
   else
-    log "no ubuntu-archive-keyring or gpgv: the checksum comes over HTTPS only (sudo apt install ubuntu-keyring gpgv)"
+    log "no ubuntu-cloudimage-keyring or gpgv: the checksum comes over HTTPS only (sudo apt install ubuntu-keyring gpgv)"
   fi
   want="$(awk -v n="*$name" '$2 == n {print $1}' "$LH_VM_DIR/SHA256SUMS")"
   [[ -n "$want" ]] || die "$name is not in SHA256SUMS"
