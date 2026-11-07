@@ -97,18 +97,27 @@ title=$(jq -r .title <<<"$issue_json")
 brief=$(jq -r '[.body] + [.comments[].body] | map(select(test("(?m)^## Implementation brief"))) | last // empty' <<<"$issue_json")
 [[ -n "$brief" ]] || die "issue #$num has no '## Implementation brief'"
 brief=$(python3 -c 'import sys; t=sys.stdin.read(); print(t[t.index("## Implementation brief"):])' <<<"$brief")
+# The file list sits under "**Files:**" or a "### N. Files" heading and runs to the next heading.
+# Directories (a submodule pointer) are not editable files: see pins below.
 mapfile -t files < <(python3 - "$brief" <<'PY'
-import re, sys
+import os, re, sys
 text = sys.argv[1]
-m = re.search(r"\*\*Files:\*\*(.*?)(?:\n\*\*[A-Z]|\Z)", text, re.S)
+m = re.search(r"(?:\*\*Files:\*\*|^#{2,}[ \t]*(?:\d+\.[ \t]*)?Files[ \t]*$)(.*?)(?=^#{1,6}[ \t]|\n\*\*[A-Z]|\Z)", text, re.S | re.M)
 seen = []
 for p in re.findall(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|md|txt|yml|yaml|json))`", m.group(1) if m else ""):
-    if "/" in p or p.endswith(".toml"):
-        if p not in seen: seen.append(p)
-print("\n".join(seen))
+    if ("/" in p or p.endswith(".toml")) and not os.path.isdir(p) and p not in seen: seen.append(p)
+if seen: print("\n".join(seen))
 PY
 )
-[[ ${#files[@]} -gt 0 && ${#files[@]} -le 5 ]] || die "brief must list 1-5 files under **Files:**, found ${#files[@]}"
+# Submodule pins the brief asks to bump: "`<submodule>` (the submodule pointer): bump it to `<sha>`".
+mapfile -t pins < <(python3 - "$brief" <<'PY'
+import re, subprocess, sys
+mods = set(re.findall(r"^\s*path = (.+)$", open(".gitmodules").read(), re.M)) if __import__("os").path.exists(".gitmodules") else set()
+for path, sha in re.findall(r"`([A-Za-z0-9_./-]+)`[^\n`]*submodule pointer[^\n]*?`([0-9a-f]{40})`", sys.argv[1]):
+    if path in mods: print(path, sha)
+PY
+)
+[[ ${#files[@]} -gt 0 && ${#files[@]} -le 5 ]] || die "brief must list 1-5 files under **Files:** or a 'Files' heading, found ${#files[@]}"
 files_bytes=0
 for f in "${files[@]}"; do [[ -f "$f" ]] && files_bytes=$((files_bytes + $(stat -c %s "$f"))); done
 [[ $files_bytes -le $LH_MAX_FILES_BYTES ]] \
@@ -130,6 +139,17 @@ git fetch -q origin main
 # shellcheck source=local/lh-branch.sh
 source "$HERE/lh-branch.sh"
 lh_select_branch "$LH_BRANCH" origin/main || die "not starting issue #$num on a stale branch"
+# A branch already ahead of main holds a finished run (it is committed and pushed only after the
+# gates pass). Stop before touching labels or files: re-running would find nothing to change and
+# put status:ready back on an issue that is in review.
+ahead=$(git rev-list --count "origin/main..$LH_BRANCH")
+[[ "$ahead" -eq 0 ]] || die "branch $LH_BRANCH already has $ahead commit(s) ahead of main: this issue was implemented. Review it (gh pr list --repo $REPO_SLUG --head $LH_BRANCH), or delete the branch to start over (git -C $CLONE_DIR branch -D $LH_BRANCH). Nothing changed."
+for pin in "${pins[@]}"; do
+  read -r pin_path pin_sha <<<"$pin"
+  git submodule update --init -- "$pin_path" && git -C "$pin_path" fetch -q origin \
+    && git -C "$pin_path" checkout -q "$pin_sha" && git add -- "$pin_path" || die "could not bump $pin_path to $pin_sha"
+  log "pin: $pin_path -> $pin_sha"
+done
 gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-progress --remove-label status:ready >/dev/null 2>&1 || true
 fail() {
   gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:ready --remove-label status:in-progress >/dev/null 2>&1 || true
@@ -151,6 +171,11 @@ model_env() {
     GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
     "$@"
 }
+# Aider offers every tracked path whose name appears in the conversation, and a submodule path
+# ("architecture") is a directory it cannot edit: it looped on "is a directory" errors. Ignore
+# submodule paths; files read from inside them (--read) still load.
+: >"$CACHE/aiderignore"
+[[ ! -f .gitmodules ]] || sed -n 's/^[[:space:]]*path = \(.*\)$/\/\1/p' .gitmodules >"$CACHE/aiderignore"
 # Aider: fix the context at the size Ollama serves, so a request never grows the KV cache.
 cat >"$CACHE/model.settings.yml" <<YML
 - name: ollama_chat/$OLLAMA_MODEL
@@ -186,7 +211,7 @@ aider_run() {
     --model-metadata-file "$CACHE/model.metadata.json" \
     --no-auto-commits --no-dirty-commits --no-gitignore --yes-always \
     --no-check-update --analytics-disable --no-show-model-warnings \
-    --no-detect-urls \
+    --no-detect-urls --aiderignore "$CACHE/aiderignore" \
     --chat-history-file "$CACHE/${LH_BRANCH//\//_}.chat.md" --input-history-file "$CACHE/${LH_BRANCH//\//_}.input" \
     --map-tokens 1024 \
     --test-cmd "bash -o pipefail -c 'cargo test --workspace -q 2>&1 | cut -c1-300 | tail -n 60'" --auto-test \
@@ -270,7 +295,7 @@ done
 log "gates pass"
 
 # 4. Scope: only the brief's files (and Cargo.lock for dependency changes).
-allowed=$(printf '%s\n' "${files[@]}" Cargo.lock)
+allowed=$(printf '%s\n' "${files[@]}" Cargo.lock; for pin in "${pins[@]}"; do echo "${pin%% *}"; done)
 extra=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -vxF -f <(printf '%s\n' "$allowed") || true)
 [[ -z "$extra" ]] || fail "changes outside the brief's files: $extra"
 [[ -n "$(git status --porcelain)" ]] || fail "the model made no changes"
