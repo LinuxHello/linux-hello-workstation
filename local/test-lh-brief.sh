@@ -112,5 +112,15 @@ got=$(cd "$work" && lh_tests_in_diff missing "rust_test_name only_mentioned_name
 if [[ "$got" == "only_mentioned_name absent_name" ]]; then ok a_mention_or_absence_is_missing
 else nok a_mention_or_absence_is_missing "got [$got]"; fi
 
+# A placeholder that already exists and is enabled (its #[ignore] removed, the fn line unchanged) counts;
+# one that stays ignored does not.
+( cd "$work" && git checkout -q -- . 2>/dev/null; git clean -fdq
+  printf '%s\n' '/// P-04' '#[test]' '#[ignore = "placeholder"]' 'fn enabled_placeholder_name() {' '    unimplemented!();' '}' '' '#[test]' '#[ignore = "placeholder"]' 'fn still_ignored_name() {' '    unimplemented!();' '}' > ph.rs
+  git add ph.rs && git commit -qm placeholders && git update-ref refs/remotes/origin/main HEAD
+  printf '%s\n' '/// P-04' '#[test]' 'fn enabled_placeholder_name() {' '    assert!(true);' '}' '' '#[test]' '#[ignore = "placeholder"]' 'fn still_ignored_name() {' '    unimplemented!();' '}' > ph.rs ) >/dev/null 2>&1
+got=$(cd "$work" && lh_tests_in_diff found "enabled_placeholder_name still_ignored_name")
+if [[ "$got" == "enabled_placeholder_name" ]]; then ok an_enabled_placeholder_counts_and_an_ignored_one_does_not
+else nok an_enabled_placeholder_counts_and_an_ignored_one_does_not "got [$got]"; fi
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
