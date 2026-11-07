@@ -12,7 +12,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude-gpu claude-cpu tpm-dev-deps implement implement-next implementer-env reset test \
+        claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset implement implement-next implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -34,6 +34,10 @@ help:
 	@echo
 	@echo "Spike prerequisites (Ubuntu)"
 	@echo "  make tpm-dev-deps         install what the TPM spikes need: tss2 dev libraries, clang, swtpm, tpm2-tools (asks for sudo)"
+	@echo
+	@echo "Test VM (Ubuntu 24.04, KVM, emulated TPM; for the virtual CTAP spike and any test that must not touch this machine)"
+	@echo "  make vm-deps | vm-image   install the tools / download and verify the cloud image (once)"
+	@echo "  make vm-up | vm-ssh | vm-sync | vm-down | vm-reset   boot, log in, copy the clone in, stop, throw the disk away"
 	@echo
 	@echo "Checks"
 	@echo "  make test                 the tooling's own tests and shellcheck"
@@ -73,6 +77,20 @@ tpm-dev-deps:
 	 if [ -z "$$missing" ]; then echo "tpm-dev-deps: everything is installed"; \
 	 else echo "installing:$$missing"; sudo apt-get install -y $$missing; fi
 
+# --- Test VM ---------------------------------------------------------------------------------
+# scripts/vm.sh says what each step does. State lives in ~/.local/share/linux-hello-vm.
+VM_PKGS := qemu-system-x86 qemu-utils swtpm swtpm-tools cloud-image-utils rsync openssh-client ubuntu-keyring gpgv curl
+vm-deps:
+	@missing=; for p in $(VM_PKGS); do dpkg -s $$p >/dev/null 2>&1 || missing="$$missing $$p"; done; \
+	 if [ -z "$$missing" ]; then echo "vm-deps: everything is installed"; \
+	 else echo "installing:$$missing"; sudo apt-get install -y $$missing; fi
+vm-image: ; @bash scripts/vm.sh image
+vm-up: ; @bash scripts/vm.sh up
+vm-ssh: ; @bash scripts/vm.sh ssh
+vm-sync: ; @bash scripts/vm.sh sync
+vm-down: ; @bash scripts/vm.sh down
+vm-reset: ; @bash scripts/vm.sh reset
+
 # --- Checks ---------------------------------------------------------------------------------
 test:
 	bash local/test-lh-implement-next.sh
@@ -84,6 +102,7 @@ test:
 	bash scripts/test-triage.sh
 	bash scripts/test-implementer-env.sh
 	bash scripts/test-dco-signoff.sh
+	bash scripts/test-vm.sh
 	@if command -v shellcheck >/dev/null; then shellcheck -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
 	 else echo "shellcheck not installed: sudo apt install shellcheck"; fi
 
