@@ -298,6 +298,10 @@ allowed=$(printf '%s\n' "${files[@]}" Cargo.lock; for pin in "${pins[@]}"; do ec
 extra=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -vxF -f <(printf '%s\n' "$allowed") || true)
 [[ -z "$extra" ]] || fail "changes outside the brief's files: $extra"
 [[ -n "$(git status --porcelain)" ]] || fail "the model made no changes"
+# A new empty file is a change to git and to the scope check, but it is no work: the diff must add lines.
+git add -N . 2>/dev/null || true
+added=$(git diff --numstat origin/main | awk '$1 ~ /^[0-9]+$/ {a += $1} END {print a + 0}')
+[[ "$added" -gt 0 ]] || fail "the model's changes add no lines (only empty or deleted files)"
 
 # 5. Commit, push, draft PR.
 git add -- "${files[@]}"; git add -- Cargo.lock 2>/dev/null || true

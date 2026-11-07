@@ -16,8 +16,10 @@ import re, sys
 text = sys.argv[1]
 # The section is "**Tests first**" or a heading ending in "tests first"; it runs to the next heading
 # or bold key.
-m = re.search(r"(?:\*\*Tests first\*\*|^#{2,}[^\n]*tests first[^\n]*$)(.*?)(?=^#{1,6}[ \t]|\n\*\*[A-Z]|\Z)",
-              text, re.S | re.M | re.I)
+# A "**Tests first**" marker ends at the next bold key; a heading ends only at the next heading, so
+# bold paragraphs inside a headed section (for example a note on how to build a value) do not cut it short.
+m = re.search(r"\*\*Tests first\*\*(.*?)(?=^#{1,6}[ \t]|\n\*\*[A-Z]|\Z)", text, re.S | re.M) \
+    or re.search(r"^#{2,}[^\n]*tests first[^\n]*$(.*?)(?=^#{1,6}[ \t]|\Z)", text, re.S | re.M | re.I)
 section = m.group(1) if m else ""
 head = re.compile(
     r"^\s*[-*]\s+(?:In `[^`]+`:\s*)?"                      # bullet, optional "In `file`:"

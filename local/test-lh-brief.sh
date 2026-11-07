@@ -98,6 +98,26 @@ Then one `check` line per case:
 expect heading_with_bullet_names_for_a_shell_test_file "$b95" 'docs_only_change_is_docs
 any_code_path_is_code'
 
+# A bold paragraph inside a headed tests section must not end it (the live brief for #103 lost all its
+# test names that way and the named-tests gate checked nothing).
+bold='### 3. Properties and tests first
+
+**Building a value.** A note in bold before the list.
+
+- `first_named_test`: does one thing.
+- `second_named_test`: does another.
+
+**Another bold note** after the list.
+
+- `third_named_test`: still in the section.
+
+### 4. Constraints
+
+- `not_a_test_name` is a constraint.'
+expect bold_paragraphs_do_not_end_a_headed_section "$bold" 'first_named_test
+second_named_test
+third_named_test'
+
 expect brief_without_tests_first_names_no_tests '**Goal:** `not_a_test_name` here.' ''
 
 # lh_tests_in_diff: Rust fn, shell function and quoted case name are found; a mere mention is not.
