@@ -12,7 +12,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude-gpu claude-cpu implement implement-next implementer-env reset test \
+        claude-gpu claude-cpu tpm-dev-deps implement implement-next implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -31,6 +31,9 @@ help:
 	@echo "  make implement-next       one tick of the unattended loop, by hand"
 	@echo "  make implementer-env      create ~/.config/linux-hello/implementer.env (never overwrites; make all does this too)"
 	@echo "  make reset                clean the clone (rescues uncommitted work first)"
+	@echo
+	@echo "Spike prerequisites (Ubuntu)"
+	@echo "  make tpm-dev-deps         install what the TPM spikes need: tss2 dev libraries, clang, swtpm, tpm2-tools (asks for sudo)"
 	@echo
 	@echo "Checks"
 	@echo "  make test                 the tooling's own tests and shellcheck"
@@ -60,6 +63,15 @@ implement:
 implement-next: ; @bash local/lh-implement-next.sh
 implementer-env: ; @bash scripts/implementer-env.sh
 reset: ; @bash local/lh-reset.sh
+
+# --- Spike prerequisites ---------------------------------------------------------------------
+# tss-esapi (spike 0011, the TPM provider) links the TSS2 libraries and generates its bindings with
+# clang; swtpm is a software TPM, so a spike cannot lock or clear the hardware TPM.
+TPM_DEV_PKGS := libtss2-dev clang libclang-dev pkg-config swtpm swtpm-tools tpm2-tools
+tpm-dev-deps:
+	@missing=; for p in $(TPM_DEV_PKGS); do dpkg -s $$p >/dev/null 2>&1 || missing="$$missing $$p"; done; \
+	 if [ -z "$$missing" ]; then echo "tpm-dev-deps: everything is installed"; \
+	 else echo "installing:$$missing"; sudo apt-get install -y $$missing; fi
 
 # --- Checks ---------------------------------------------------------------------------------
 test:
