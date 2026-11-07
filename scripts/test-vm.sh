@@ -32,5 +32,11 @@ if [[ ! -e "$LH_VM_DIR/disk.qcow2" && ! -d "$LH_VM_DIR/tpm" && -e "$LH_VM_DIR/ub
   ok reset_removes_the_disk_and_tpm_state_but_keeps_the_image
 else nok reset_removes_the_disk_and_tpm_state_but_keeps_the_image "$(ls "$LH_VM_DIR")"; fi
 
+# The cloud images are signed with the cloud-image key. The archive keyring cannot verify them
+# (vm-image failed on that on 2026-11-08), so the script must name the cloud-image keyring.
+if grep -q 'keyrings/ubuntu-cloudimage-keyring.gpg' "$here/vm.sh" && ! grep -q 'keyrings/ubuntu-archive-keyring.gpg' "$here/vm.sh"; then
+  ok signature_is_checked_against_the_cloud_image_keyring
+else nok signature_is_checked_against_the_cloud_image_keyring "vm.sh names the wrong keyring"; fi
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
