@@ -33,16 +33,27 @@ PY
 }
 
 # A test exists in a diff when its name is a Rust fn, a shell function, or a quoted case name
-# (a `check "name" ...` line).
+# (a `check "name" ...` line), or when an existing `#[ignore]`d placeholder with that name is enabled.
 lh_tests_in_diff() {
   python3 - "$1" "$2" <<'PY'
 import re, subprocess, sys
 want, names = sys.argv[1], sys.argv[2].split()
 subprocess.run(["git", "add", "-N", "."], check=False)
 diff = subprocess.run(["git", "diff", "origin/main"], capture_output=True, text=True).stdout
+lines = diff.split("\n")
+def enabled_placeholder(n):
+    """A placeholder test that exists already and is enabled by the diff: its fn line is context and an
+    #[ignore] line just above it is removed."""
+    e = re.compile(r"^\s+fn " + re.escape(n) + r"\s*\(")
+    for i, l in enumerate(lines):
+        if e.match(l) and any(x.startswith("-") and "#[ignore" in x for x in lines[max(0, i - 4):i]):
+            return True
+    return False
 def present(n):
     e = re.escape(n)
-    return bool(re.search(r"^\+\s*fn " + e + r"\s*\(|^\+\s*" + e + r"\s*\(\)|^\+.*[\"']" + e + r"[\"']", diff, re.M))
+    if re.search(r"^\+\s*fn " + e + r"\s*\(|^\+\s*" + e + r"\s*\(\)|^\+.*[\"']" + e + r"[\"']", diff, re.M):
+        return True
+    return enabled_placeholder(n)
 print(" ".join(n for n in names if present(n) == (want == "found")))
 PY
 }
