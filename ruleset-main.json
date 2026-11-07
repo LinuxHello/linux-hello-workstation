@@ -21,6 +21,11 @@
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
           { "context": "fmt" }, { "context": "clippy" }, { "context": "test" },
-          { "context": "cargo-deny" }, { "context": "cargo-audit" }, { "context": "dco" } ] } }
+          { "context": "cargo-deny" }, { "context": "cargo-audit" }, { "context": "dco" },
+          { "context": "quality-gate" }, { "context": "fuzz" } ] } },
+    { "type": "code_scanning",
+      "parameters": {
+        "code_scanning_tools": [
+          { "tool": "CodeQL", "alerts_threshold": "errors", "security_alerts_threshold": "high_or_higher" } ] } }
   ]
 }
