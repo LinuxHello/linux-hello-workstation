@@ -12,7 +12,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset implement implement-next implementer-env reset test \
+        claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-test-agent implement implement-next implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -38,6 +38,7 @@ help:
 	@echo "Test VM (Ubuntu 24.04, KVM, emulated TPM; for the virtual CTAP spike and any test that must not touch this machine)"
 	@echo "  make vm-deps | vm-image   install the tools / download and verify the cloud image (once)"
 	@echo "  make vm-up | vm-ssh | vm-sync | vm-down | vm-reset   boot, log in, copy the clone in, stop, throw the disk away"
+	@echo "  make vm-test-agent        install the Agent with its bus policy, unit and AppArmor profile in the VM and test the confinement"
 	@echo
 	@echo "Checks"
 	@echo "  make test                 the tooling's own tests and shellcheck"
@@ -90,6 +91,7 @@ vm-ssh: ; @bash scripts/vm.sh ssh
 vm-sync: ; @bash scripts/vm.sh sync
 vm-down: ; @bash scripts/vm.sh down
 vm-reset: ; @bash scripts/vm.sh reset
+vm-test-agent: ; @bash scripts/vm-test-agent.sh
 
 # --- Checks ---------------------------------------------------------------------------------
 test:
