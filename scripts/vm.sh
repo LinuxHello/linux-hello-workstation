@@ -128,7 +128,9 @@ cmd_sync() {
 
 stop_vm() {
   if running; then kill "$(cat "$pidfile")" 2>/dev/null || true; fi
-  [[ -f "$tpm_pidfile" ]] && kill "$(cat "$tpm_pidfile")" 2>/dev/null || true
+  # swtpm exits when qemu goes and removes its own pid file, so the file can vanish while we read it.
+  swtpm_pid="$(cat "$tpm_pidfile" 2>/dev/null || true)"
+  [[ -z "$swtpm_pid" ]] || kill "$swtpm_pid" 2>/dev/null || true
   rm -f "$pidfile" "$tpm_pidfile" "$LH_VM_DIR/swtpm.sock"
 }
 cmd_down() { stop_vm; log "stopped (disk and TPM state kept)"; }
