@@ -15,7 +15,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
         claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all image-check image-mirror implement implement-next draft-brief draft-adr models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pam image-check image-mirror implement implement-next draft-brief draft-adr models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -47,6 +47,7 @@ help:
 	@echo "  make vm-up | vm-ssh | vm-sync | vm-down | vm-reset | vm-status   boot, log in, copy the clone in, stop, throw the disk away, show"
 	@echo "  make vm-test-agent        install the Agent with its bus policy, unit and AppArmor profile in the VM and test the confinement"
 	@echo "  make vm-test-agent-all    the same on every release (boots each VM; the images must be downloaded)"
+	@echo "  make vm-test-pam          spike 0007 at runtime: which bus a process reaches from inside sudo and a root PAM caller"
 	@echo
 	@echo "Architecture repository: the pinned Structurizr image (needs the architecture checkout at $(ARCH_REPO_DIR))"
 	@echo "  make image-check [ENGINE=podman|docker]   pull the pinned image from the org's registry, else Docker Hub, and say which"
@@ -126,6 +127,7 @@ vm-down: ; @bash scripts/vm.sh down
 vm-reset: ; @bash scripts/vm.sh reset
 vm-status: ; @echo "Ubuntu $(VM_RELEASE), ssh port $(LH_VM_SSH_PORT)"; bash scripts/vm.sh status
 vm-test-agent: ; @bash scripts/vm-test-agent.sh
+vm-test-pam: ; @bash scripts/vm-test-pam.sh
 vm-test-agent-all:
 	@for r in $(VM_RELEASES); do echo "==> Ubuntu $$r"; $(MAKE) --no-print-directory vm-up vm-test-agent VM_RELEASE=$$r || exit 1; done
 
