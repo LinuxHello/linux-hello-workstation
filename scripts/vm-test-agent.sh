@@ -83,6 +83,16 @@ done
 check "another_user_cannot_open_a_prompt_for_someone_else" 'call nobody $N $P $N OpenPrompt sx $(echo $ID | tr 0-9a-f 1-9a-f0) $LHUID | grep -q "Access denied"'
 check "another_user_cannot_take_the_name" 'call nobody org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus RequestName su $N 0 | grep -q "Access denied"'
 
+# The user policy layer (ADR-0018): kept by the Agent under its state directory, set over the bus.
+POLICY='[methods]
+biometrics_allowed = false'
+check "a_user_sets_its_own_policy_layer" 'call lh $N $P $N SetUserPolicy s "$POLICY"; [ $? -eq 0 ]'
+check "the_user_reads_its_own_policy_layer" 'call lh $N $P $N GetUserPolicy | grep -q "biometrics_allowed = false"'
+check "another_user_sees_only_its_own_empty_layer" 'call nobody $N $P $N GetUserPolicy | grep -qx "s \"\""'
+check "a_policy_the_schema_rejects_is_refused" 'call lh $N $P $N SetUserPolicy s "invalid = toml" | grep -q "invalid argument"'
+check "the_refused_policy_left_the_stored_layer_alone" 'call lh $N $P $N GetUserPolicy | grep -q "biometrics_allowed = false"'
+check "the_layer_is_a_private_file_of_the_agents_user" '[ "$(sudo stat -c "%U %a" /var/lib/linuxhello/users/$LHUID/policy.toml)" = "linuxhello 600" ]'
+
 # A subscriber hears the Agent's real signal; a bystander and two forgers cause nothing.
 cat > /tmp/flow.py <<'PY'
 import sys, dbus, dbus.mainloop.glib
