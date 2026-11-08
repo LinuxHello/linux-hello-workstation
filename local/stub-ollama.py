@@ -6,9 +6,14 @@
 the port. /api/ps and /api/tags answer from the files and the arguments, /api/show gives every model
 a 32768-token window, and /api/generate loads a model or, with keep_alive 0, unloads it.
 """
-import http.server, json, os, sys
+import http.server, json, os, sys, tempfile
 
-work, pulled = sys.argv[1], sys.argv[2:]
+# The state directory must be a real directory inside the temporary directory: the tests make it
+# with mktemp -d, and nothing else may be written through this argument.
+work = os.path.realpath(sys.argv[1])
+pulled = sys.argv[2:]
+if not work.startswith(os.path.realpath(tempfile.gettempdir()) + os.sep) or not os.path.isdir(work):
+    sys.exit("stub-ollama: the state directory must be inside " + tempfile.gettempdir())
 loaded = os.path.join(work, "loaded")
 
 
@@ -42,6 +47,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.reply({})
 
 
-server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+server = http.server.HTTPServer(("127.0.0.1", 0), Handler)  # NOSONAR python:S5332 loopback only, test stub
 open(os.path.join(work, "port"), "w").write(str(server.server_address[1]))
-server.serve_forever()
+server.serve_forever()  # NOSONAR python:S5332 loopback only, test stub
