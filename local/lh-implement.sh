@@ -171,7 +171,12 @@ done
 # The model's process: no GitHub token, no gh login, no git credential helper, no prompts.
 NOCRED=$(mktemp -d "${TMPDIR:-/tmp}/lh-nocred.XXXXXX")
 RELAY_PID=
-trap 'rm -rf "$NOCRED"; [[ -z "$RELAY_PID" ]] || kill "$RELAY_PID" 2>/dev/null || true' EXIT
+# Make the model the only one loaded, and unload it when the run ends (local/lh-model.sh); the model
+# of an interactive session is not evicted unless LH_EVICT=1.
+# shellcheck source=local/lh-model.sh
+source "$HERE/lh-model.sh"
+trap 'lh_model_release;rm -rf "$NOCRED"; [[ -z "$RELAY_PID" ]] || kill "$RELAY_PID" 2>/dev/null || true' EXIT
+lh_model_acquire "$OLLAMA_MODEL" || die "cannot make '$OLLAMA_MODEL' the loaded model"
 model_env() {
   env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u ANTHROPIC_API_KEY \
     GH_CONFIG_DIR="$NOCRED" GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false \

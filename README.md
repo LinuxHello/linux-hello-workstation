@@ -30,3 +30,5 @@ Defaults: GPU `OLLAMA_MODEL=gemma4-26b-64k`, `LH_NUM_CTX=65536`; CPU `OLLAMA_MOD
 ## Changing this repository
 
 By pull request, like the monorepo: the lead opens it, the maintainer certifies and merges. `make test` must pass.
+
+Which model runs which role is set in `~/.config/linux-hello/models.env` (`local/models.env.example`; defaults: the implementer on `gemma4-26b-64k`, drafting on `qwen38-27b-text-32k`). `make implement`, `make draft-brief` and `make draft-adr` make their model the only one loaded and unload it when they end (`local/lh-model.sh`), so the GPU is free for the next job. They refuse to unload a model that an interactive `make claude-gpu` session uses, unless `LH_EVICT=1`.

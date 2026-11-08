@@ -15,7 +15,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
         claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all image-check image-mirror implement implement-next implementer-env reset test \
+        vm-test-agent vm-test-agent-all image-check image-mirror implement implement-next draft-brief draft-adr models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -32,6 +32,9 @@ help:
 	@echo "  make claude-cpu           the same on the CPU-only Ollama (gemma4 128k, slow)"
 	@echo "  make implement ISSUE=<n> [HARNESS=aider|claude]   implement one issue from its brief"
 	@echo "  make implement-next       one tick of the unattended loop, by hand"
+	@echo "  make draft-brief ISSUE=n  a local model drafts the brief into a file (never posts)"
+	@echo "  make draft-adr TITLE=.. DECISION=..  a local model drafts an ADR into a file"
+	@echo "  make models               models loaded now;  make models-unload frees the GPU"
 	@echo "  make implementer-env      create ~/.config/linux-hello/implementer.env (never overwrites; make all does this too)"
 	@echo "  make reset                clean the clone (rescues uncommitted work first)"
 	@echo
@@ -75,6 +78,14 @@ implement:
 	@test -n "$(ISSUE)" || { echo "usage: make implement ISSUE=<number> [HARNESS=aider|claude]"; exit 1; }
 	@LH_HARNESS=$${HARNESS:-$${LH_HARNESS:-aider}} bash local/lh-implement.sh $(ISSUE)
 implement-next: ; @bash local/lh-implement-next.sh
+draft-brief:
+	@test -n "$(ISSUE)" || { echo "usage: make draft-brief ISSUE=<number>"; exit 1; }
+	@bash local/lh-draft.sh brief $(ISSUE)
+draft-adr:
+	@test -n "$(TITLE)" -a -n "$(DECISION)" || { echo "usage: make draft-adr TITLE='...' DECISION='text or file'"; exit 1; }
+	@bash local/lh-draft.sh adr "$(TITLE)" "$(DECISION)"
+models: ; @curl -fsS http://127.0.0.1:11434/api/ps | jq -r '.models[] | "\(.name)  \(.context_length) ctx  \(.size_vram / 1e9 | floor) GB in VRAM"'
+models-unload: ; @for m in $$(curl -fsS http://127.0.0.1:11434/api/ps | jq -r '.models[].name'); do curl -fsS http://127.0.0.1:11434/api/generate -d "{\"model\":\"$$m\",\"keep_alive\":0}" >/dev/null && echo "unloaded $$m"; done
 implementer-env: ; @bash scripts/implementer-env.sh
 reset: ; @bash local/lh-reset.sh
 
@@ -136,6 +147,8 @@ test:
 	bash local/test-lh-prompts.sh
 	bash local/test-lh-guard.sh
 	bash local/test-lh-nothink-relay.sh
+	bash local/test-lh-model.sh
+	bash local/test-lh-draft.sh
 	bash scripts/test-triage.sh
 	bash scripts/test-implementer-env.sh
 	bash scripts/test-dco-signoff.sh
