@@ -61,7 +61,9 @@ sudo systemctl start linuxhello-agent; sleep 1
 
 PID=$(systemctl show -p MainPID --value linuxhello-agent)
 check "unit_starts_with_the_profile_enforcing" '[ "$(systemctl is-active linuxhello-agent)" = active ] && sudo grep -qx "linuxhello-agent (enforce)" /sys/kernel/security/apparmor/profiles'
-check "agent_process_runs_confined_in_enforce_mode" '[ "$(sudo cat /proc/$PID/attr/current)" = "linuxhello-agent (enforce)" ]'
+# Ubuntu 26.04 (systemd 259, kernel 7.0) stacks the profile with "unconfined": the label is
+# "linuxhello-agent//&unconfined (enforce)", which is the profile's restrictions and no more.
+check "agent_process_runs_confined_in_enforce_mode" 'sudo cat /proc/$PID/attr/current | grep -Eq "^linuxhello-agent(//&[a-z]+)? \(enforce\)$"'
 check "name_is_owned_by_the_agents_user" 'busctl --system list --no-pager | grep -q "$N .*linuxhello .*linuxhello-agent.service"'
 for u in lh nobody; do
   check "any_user_reaches_the_agents_methods_($u)" 'call $u $N $P $N GetState s bad | grep -q "invalid argument"'
@@ -123,6 +125,11 @@ check "the_unit_starts_again_once_the_profile_is_enforcing" '[ "$(systemctl is-a
 # No AppArmor denial except the probes of this test (the Properties calls that the policy refuses).
 D=$(sudo journalctl -k --no-pager --since "@$T0" | grep "apparmor=\"DENIED\"" | grep "linuxhello-agent" | grep -vc "interface=\"org.freedesktop.DBus.Properties\"")
 check "apparmor_denies_nothing_the_agent_needs" '[ "$D" = 0 ]'
+# The profile really denies: run an ordinary binary under it. It grants /usr/bin/cat nothing, so the
+# kernel must refuse to start it and log the denial. Done last so it does not count above.
+sudo systemd-run --quiet --wait --pipe -p AppArmorProfile=linuxhello-agent -p User=linuxhello /usr/bin/cat /etc/hostname >/dev/null 2>&1
+RC=$?
+check "the_profile_really_denies_what_it_does_not_grant" '[ "$RC" -ne 0 ] && sudo journalctl -k --no-pager --since "-30sec" | grep "apparmor=\"DENIED\"" | grep -q "linuxhello-agent"'
 SC=$(systemd-analyze security linuxhello-agent --no-pager 2>&1 | tail -1)
 echo "INFO $SC"
 [ "$fail" -eq 0 ] && echo "ALL PASSED" || echo "$fail FAILED"
