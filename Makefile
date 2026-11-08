@@ -8,11 +8,14 @@ export OWNER ?= atterdag
 export CLONE_DIR ?= $(HOME)/projects/$(ORG)/$(REPO)
 export ARCH_SRC ?= /srv/sync/GoogleDrive/Obsidian Vaults/Sovereign AI Workstation/Architecture
 export REPO_SLUG ?= $(ORG)/$(REPO)
+# The architecture repository (diagrams, the pinned Structurizr image and its scripts).
+export ARCH_REPO_DIR ?= $(HOME)/projects/$(ORG)/architecture
 BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-test-agent implement implement-next implementer-env reset test \
+        claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
+        vm-test-agent vm-test-agent-all image-check image-mirror implement implement-next implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -35,10 +38,16 @@ help:
 	@echo "Spike prerequisites (Ubuntu)"
 	@echo "  make tpm-dev-deps         install what the TPM spikes need: tss2 dev libraries, clang, swtpm, tpm2-tools (asks for sudo)"
 	@echo
-	@echo "Test VM (Ubuntu 24.04, KVM, emulated TPM; for the virtual CTAP spike and any test that must not touch this machine)"
-	@echo "  make vm-deps | vm-image   install the tools / download and verify the cloud image (once)"
-	@echo "  make vm-up | vm-ssh | vm-sync | vm-down | vm-reset   boot, log in, copy the clone in, stop, throw the disk away"
+	@echo "Test VM (Ubuntu, KVM, emulated TPM; for the virtual CTAP spike and any test that must not touch this machine)"
+	@echo "  Every vm-* target takes VM_RELEASE=24.04 (default) or 26.04: each release has its own image, disk and ssh port"
+	@echo "  make vm-deps | vm-image   install the tools / download and verify the cloud image (once per release)"
+	@echo "  make vm-up | vm-ssh | vm-sync | vm-down | vm-reset | vm-status   boot, log in, copy the clone in, stop, throw the disk away, show"
 	@echo "  make vm-test-agent        install the Agent with its bus policy, unit and AppArmor profile in the VM and test the confinement"
+	@echo "  make vm-test-agent-all    the same on every release (boots each VM; the images must be downloaded)"
+	@echo
+	@echo "Architecture repository: the pinned Structurizr image (needs the architecture checkout at $(ARCH_REPO_DIR))"
+	@echo "  make image-check [ENGINE=podman|docker]   pull the pinned image from the org's registry, else Docker Hub, and say which"
+	@echo "  make image-mirror         copy the pinned image from Docker Hub to the org's registry (skopeo, after skopeo login ghcr.io)"
 	@echo
 	@echo "Checks"
 	@echo "  make test                 the tooling's own tests and shellcheck"
@@ -79,7 +88,20 @@ tpm-dev-deps:
 	 else echo "installing:$$missing"; sudo apt-get install -y $$missing; fi
 
 # --- Test VM ---------------------------------------------------------------------------------
-# scripts/vm.sh says what each step does. State lives in ~/.local/share/linux-hello-vm.
+# scripts/vm.sh says what each step does. Each release has its own state directory and ssh port, so
+# the guests run side by side; VM_RELEASE picks the one a target acts on (default 24.04, the release
+# CI runs on). The values are set here, not taken from the environment, so a target that runs
+# another release through $(MAKE) is not misled by what this make exported.
+VM_RELEASES := 24.04 26.04
+VM_RELEASE ?= 24.04
+VM_DIR_24.04 := $(HOME)/.local/share/linux-hello-vm
+VM_DIR_26.04 := $(HOME)/.local/share/linux-hello-vm-2604
+VM_PORT_24.04 := 2222
+VM_PORT_26.04 := 2223
+$(if $(VM_DIR_$(VM_RELEASE)),,$(error VM_RELEASE=$(VM_RELEASE) is not one of: $(VM_RELEASES)))
+export LH_VM_RELEASE := $(VM_RELEASE)
+export LH_VM_DIR := $(VM_DIR_$(VM_RELEASE))
+export LH_VM_SSH_PORT := $(VM_PORT_$(VM_RELEASE))
 VM_PKGS := qemu-system-x86 qemu-utils swtpm swtpm-tools cloud-image-utils rsync openssh-client ubuntu-keyring gpgv curl
 vm-deps:
 	@missing=; for p in $(VM_PKGS); do dpkg -s $$p >/dev/null 2>&1 || missing="$$missing $$p"; done; \
@@ -91,7 +113,20 @@ vm-ssh: ; @bash scripts/vm.sh ssh
 vm-sync: ; @bash scripts/vm.sh sync
 vm-down: ; @bash scripts/vm.sh down
 vm-reset: ; @bash scripts/vm.sh reset
+vm-status: ; @echo "Ubuntu $(VM_RELEASE), ssh port $(LH_VM_SSH_PORT)"; bash scripts/vm.sh status
 vm-test-agent: ; @bash scripts/vm-test-agent.sh
+vm-test-agent-all:
+	@for r in $(VM_RELEASES); do echo "==> Ubuntu $$r"; $(MAKE) --no-print-directory vm-up vm-test-agent VM_RELEASE=$$r || exit 1; done
+
+# --- Architecture repository: the pinned Structurizr image ------------------------------------
+# The scripts live in $(ARCH_REPO_DIR)/scripts (resolve-image.sh, mirror-image.sh, image.env).
+ENGINE ?= podman
+image-check:
+	@test -f $(ARCH_REPO_DIR)/scripts/resolve-image.sh || { echo "$(ARCH_REPO_DIR)/scripts/resolve-image.sh missing: clone LinuxHello/architecture there and pull main (or set ARCH_REPO_DIR)"; exit 1; }
+	@bash $(ARCH_REPO_DIR)/scripts/resolve-image.sh $(ENGINE) >/dev/null
+image-mirror:
+	@test -f $(ARCH_REPO_DIR)/scripts/mirror-image.sh || { echo "$(ARCH_REPO_DIR)/scripts/mirror-image.sh missing: clone LinuxHello/architecture there and pull main (or set ARCH_REPO_DIR)"; exit 1; }
+	@bash $(ARCH_REPO_DIR)/scripts/mirror-image.sh
 
 # --- Checks ---------------------------------------------------------------------------------
 test:
