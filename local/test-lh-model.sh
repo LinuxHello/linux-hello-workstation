@@ -51,6 +51,8 @@ lh_model_release 2>/dev/null; rm -f "$work/session"
 rc=0; OLLAMA_HOST=http://example.com:11434 bash -c "source $here/lh-model.sh; lh_model_post '{}'" 2>/dev/null || rc=$?
 check "a_non_loopback_host_is_refused_for_loading" "$([[ $rc -ne 0 ]]; echo $?)"
 
+rc=0; [[ "$(env -u OLLAMA_HOST bash -c "source $here/lh-model.sh; bash -c 'echo \$OLLAMA_HOST'")" == http://127.0.0.1:11434 ]] || rc=$?
+check "the_default_host_reaches_child_processes" $rc
 rc=0; ( LH_MODELS_ENV=/nonexistent; lh_role implement; [[ "$OLLAMA_MODEL" == gemma4-26b-64k:latest && "$LH_NUM_CTX" == 65536 ]] ) || rc=$?; check "implement_role_defaults" $rc
 rc=0; ( LH_MODELS_ENV=/nonexistent; lh_role draft; [[ "$OLLAMA_MODEL" == qwen38-27b-text-32k:latest && "$LH_NUM_CTX" == 32768 ]] ) || rc=$?; check "draft_role_defaults" $rc
 printf 'LH_MODEL_DRAFT=other:1\nLH_CTX_DRAFT=8192\n' > "$work/models.env"
