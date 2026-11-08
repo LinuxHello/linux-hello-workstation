@@ -30,7 +30,7 @@ SH
 cat > "$work/bin/claude" <<'SH'
 #!/usr/bin/env bash
 echo "$*" > "$STUB_DIR/claude.args"
-echo "token=${GH_TOKEN:-unset}" > "$STUB_DIR/claude.env"
+echo "token=${GH_TOKEN:-unset} out=${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-unset}" > "$STUB_DIR/claude.env"
 cp "$STUB_DIR/srv/loaded" "$STUB_DIR/loaded.during"
 cat "$STUB_DIR/answer"
 SH
@@ -50,7 +50,8 @@ check "preamble_before_the_heading_is_dropped" "$([[ "$(head -1 "$work/drafts/br
 check "the_draft_model_was_the_only_one_loaded_during_the_run" "$([[ "$(tr -d '\n' < "$work/loaded.during")" == qwen38-27b-text-32k:latest ]]; echo $?)"
 check "the_draft_model_is_unloaded_afterwards" "$([[ -z "$(tr -d '\n ' < "$work/srv/loaded")" ]]; echo $?)"
 check "the_model_can_only_read" "$(grep -q 'allowedTools Read Grep Glob' "$work/claude.args"; echo $?)"
-check "the_model_gets_no_github_token" "$([[ "$(cat "$work/claude.env")" == token=unset ]]; echo $?)"
+check "the_model_gets_no_github_token" "$(grep -q "token=unset" "$work/claude.env"; echo $?)"
+check "the_reply_cap_leaves_room_in_a_small_window" "$(grep -q "out=6000" "$work/claude.env"; echo $?)"
 check "nothing_is_posted_to_github" "$(! grep -Eq 'issue (comment|edit|create|close)|pr ' "$work/gh.log"; echo $?)"
 check "test_names_are_counted_for_the_implementer_gate" "$(grep -q '1 test name' "$work/out"; echo $?)"
 
