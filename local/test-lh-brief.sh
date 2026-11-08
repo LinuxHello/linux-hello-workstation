@@ -142,5 +142,14 @@ got=$(cd "$work" && lh_tests_in_diff found "enabled_placeholder_name still_ignor
 if [[ "$got" == "enabled_placeholder_name" ]]; then ok an_enabled_placeholder_counts_and_an_ignored_one_does_not
 else nok an_enabled_placeholder_counts_and_an_ignored_one_does_not "got [$got]"; fi
 
+# lh_deleted_tests: a removed or renamed test is reported; an edited one and a new one are not.
+( cd "$work" && git checkout -q -- . 2>/dev/null; git clean -fdq
+  printf '%s\n' '#[test]' '#[ignore = "p"]' 'fn kept_placeholder() {}' '' '#[test]' '#[ignore = "p"]' 'fn removed_placeholder() {}' '' '#[test]' 'fn renamed_old() {}' '' '#[test]' 'fn edited() { assert!(true); }' '' 'fn helper() {}' > dt.rs
+  git add dt.rs && git commit -qm dt && git update-ref refs/remotes/origin/main HEAD
+  printf '%s\n' '#[test]' '#[ignore = "p"]' 'fn kept_placeholder() {}' '' '#[test]' 'fn renamed_new() {}' '' '#[test]' 'fn edited() { assert!(false || true); }' '' '#[test]' 'fn added() {}' > dt.rs ) >/dev/null 2>&1
+got=$(cd "$work" && lh_deleted_tests)
+if [[ "$got" == "removed_placeholder renamed_old" ]]; then ok removed_and_renamed_tests_are_reported_but_edited_and_new_are_not
+else nok removed_and_renamed_tests_are_reported_but_edited_and_new_are_not "got [$got]"; fi
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

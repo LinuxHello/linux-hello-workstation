@@ -281,7 +281,8 @@ gates() {
   cargo test --workspace -q &&
   cargo deny check &&
   bash scripts/ci/unsafe-policy.sh &&
-  { m=$(missing_tests); [[ -z "$m" ]] || { echo "Tests named in the brief are missing: $m"; false; }; }
+  { m=$(missing_tests); [[ -z "$m" ]] || { echo "Tests named in the brief are missing: $m"; false; }; } &&
+  { d=$(lh_deleted_tests); [[ -z "$d" ]] || { echo "These tests were removed or renamed, and the brief does not allow it; put them back exactly as they were: $d"; false; }; }
 }
 round=0
 until out=$(gates 2>&1); do
