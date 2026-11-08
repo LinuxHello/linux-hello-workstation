@@ -2,7 +2,7 @@
 #
 #   lh_brief_test_names <brief>    the test names of its **Tests first** section, or of a heading that
 #                                  ends in "tests first" ("### 3. Properties and tests first"), one per line
-#   lh_tests_in_diff <found|missing> <names>   the names that do (or do not) appear in the added lines of
+#   lh_deleted_tests               the test fns the diff removes or renames (none is allowed)\n#   lh_tests_in_diff <found|missing> <names>   the names that do (or do not) appear in the added lines of
 #                                  git diff origin/main, space separated
 #
 # A test name is a backticked name at the head of a bullet: "- `name`: ...",
@@ -57,5 +57,34 @@ def present(n):
         return True
     return enabled_placeholder(n)
 print(" ".join(n for n in names if present(n) == (want == "found")))
+PY
+}
+
+# A test that the diff removes or renames: a `fn` line marked by #[test] (or by an #[ignore] above it)
+# that is deleted and not added back under the same name. Prints the names, space separated.
+lh_deleted_tests() {
+  python3 - <<'PY'
+import re, subprocess
+subprocess.run(["git", "add", "-N", "."], check=False)
+diff = subprocess.run(["git", "diff", "origin/main"], capture_output=True, text=True).stdout.split("\n")
+fn = re.compile(r"^([-+ ])\s*(?:pub\s+)?fn ([A-Za-z0-9_]+)\s*\(")
+marker = re.compile(r"^[-+ ]\s*#\[(?:test|ignore|tokio::test)")
+removed, added = set(), set()
+for i, line in enumerate(diff):
+    m = fn.match(line)
+    if not m:
+        continue
+    if m.group(1) == "+":         # any added fn name counts as put back, whatever sits above it in the diff
+        added.add(m.group(2))
+        continue
+    attrs, j = [], i - 1          # the attribute lines directly above the fn
+    while j >= 0 and re.match(r"^[-+ ]\s*#\[", diff[j]):
+        attrs.append(diff[j])
+        j -= 1
+    if not any(marker.match(x) for x in attrs):
+        continue
+    if m.group(1) == "-":
+        removed.add(m.group(2))
+print(" ".join(sorted(removed - added)))
 PY
 }
