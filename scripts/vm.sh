@@ -11,6 +11,9 @@
 #   scripts/vm.sh down     shut down, keeping the disk and the TPM state
 #   scripts/vm.sh status
 #
+# Another release beside the first (its own image, disk and ssh port), for example Ubuntu 26.04:
+#   export LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604 LH_VM_SSH_PORT=2223
+#   scripts/vm.sh image && scripts/vm.sh up && scripts/vm-test-agent.sh
 # Ubuntu 24.04 is the release CI runs on. The VM has KVM, 4 CPUs, 4 GiB, a TPM 2.0 from swtpm
 # (the guest sees /dev/tpm0 and /dev/tpmrm0) and a user-mode network: ssh on 127.0.0.1:$LH_VM_SSH_PORT
 # only, no inbound access from the LAN. Everything lives in $LH_VM_DIR; nothing outside it changes.
@@ -87,9 +90,10 @@ users:
       - $(cat "$key.pub")
 package_update: true
 packages: [build-essential, pkg-config, libtss2-dev, clang, libclang-dev, tpm2-tools, rsync, git, curl, udev]
-# The cloud image's kernel has no uhid module; it is in linux-modules-extra (found on the first boot, 2026-11-08).
+# Ubuntu 24.04's cloud kernel has no uhid module; it is in linux-modules-extra. Ubuntu 26.04's kernel
+# has it and has no such package, so install the package only when modprobe fails.
 runcmd:
-  - [bash, -c, "apt-get install -y linux-modules-extra-\$(uname -r) && modprobe uhid && echo uhid > /etc/modules-load.d/uhid.conf"]
+  - [bash, -c, "modprobe uhid || (apt-get install -y linux-modules-extra-\$(uname -r) && modprobe uhid); echo uhid > /etc/modules-load.d/uhid.conf"]
 EOF
     printf 'instance-id: lh-vm-%s\nlocal-hostname: lh-vm\n' "$(date +%s)" >"$LH_VM_DIR/meta-data"
     cloud-localds "$seed" "$LH_VM_DIR/user-data" "$LH_VM_DIR/meta-data"
