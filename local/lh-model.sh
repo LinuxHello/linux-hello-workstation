@@ -39,8 +39,10 @@ lh_models_loaded() {
 }
 
 # Whether an interactive Claude Code session is running on <model> (claude-local-*.sh passes --model).
+# Ollama reports "name:latest" where the session was started with "name", so both spellings count.
 lh_session_uses() {
-  pgrep -f -- "claude --model $1( |\$)" >/dev/null 2>&1
+  local m=$1 bare=${1%:latest}
+  pgrep -f -- "claude --model ($m|$bare)( |\$)" >/dev/null 2>&1
 }
 
 lh_model_unload() {
