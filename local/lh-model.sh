@@ -21,6 +21,7 @@
 #   LH_EVICT        1 = unload a model even when an interactive session uses it (default 0)
 
 : "${OLLAMA_HOST:=http://127.0.0.1:11434}"
+export OLLAMA_HOST   # the scripts that source this start Claude Code, which needs it
 LH_LOADED_BY_US=""
 
 lh_model_die() { printf 'ERROR: %s\n' "$*" >&2; return 1; }
