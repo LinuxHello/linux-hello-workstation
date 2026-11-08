@@ -17,11 +17,11 @@ python3 "$here/stub-ollama.py" "$work" & srv=$!
 for _ in $(seq 50); do [[ -s "$work/port" ]] && break; sleep 0.1; done
 export OLLAMA_HOST="http://127.0.0.1:$(cat "$work/port")"
 
-# A stub pgrep: succeeds when $work/session names the model in the pattern.
+# A stub pgrep: matches the pattern against the command line of a session started on the model in $work/session.
 mkdir -p "$work/bin"
 cat > "$work/bin/pgrep" <<'SH'
 #!/usr/bin/env bash
-[[ -f "$STUB_SESSION" ]] && grep -qF -- "$(cat "$STUB_SESSION")" <<<"${*: -1}"
+[[ -f "$STUB_SESSION" ]] && grep -Eq -- "${*: -1}" <<<"claude --model $(cat "$STUB_SESSION") --name GPU --strict-mcp-config"
 SH
 chmod +x "$work/bin/pgrep"
 export PATH="$work/bin:$PATH" STUB_SESSION="$work/session"
@@ -44,6 +44,10 @@ printf 'big\n' > "$work/loaded"; echo big > "$work/session"
 rc=0; lh_model_acquire small 2>"$work/err" || rc=$?
 check "acquire_refuses_to_evict_a_model_an_interactive_session_uses" "$([[ $rc -ne 0 && "$(loaded)" == big ]]; echo $?)"
 check "the_refusal_names_the_model_and_the_override" "$(grep -q "big.*LH_EVICT=1" "$work/err"; echo $?)"
+printf 'big:latest\n' > "$work/loaded"; echo big > "$work/session"
+rc=0; lh_model_acquire small 2>/dev/null || rc=$?
+check "a_session_started_without_the_latest_tag_still_counts" "$([[ $rc -ne 0 && "$(loaded)" == big:latest ]]; echo $?)"
+printf 'big\n' > "$work/loaded"
 rc=0; LH_EVICT=1 lh_model_acquire small 2>/dev/null || rc=$?
 check "lh_evict_unloads_it_anyway" "$([[ $rc -eq 0 && "$(loaded)" == small ]]; echo $?)"
 lh_model_release 2>/dev/null; rm -f "$work/session"

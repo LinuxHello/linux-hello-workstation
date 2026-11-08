@@ -12,13 +12,16 @@
 #
 # Environment: CLONE_DIR (linux-hello clone), ARCH_REPO_DIR (architecture clone, for the ADR template),
 # REPO_SLUG, LH_EXAMPLE_BRIEF (issue whose brief is the worked example, default 106),
-# LH_DRAFT_MAX_TURNS (default 30), LH_MODELS_ENV and the settings of local/lh-model.sh.
+# LH_DRAFT_MAX_TURNS (default 30), LH_DRAFT_MAX_OUTPUT (default 6000, Claude Code's cap on one reply), LH_MODELS_ENV and the settings of local/lh-model.sh.
 set -euo pipefail
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
 : "${ARCH_REPO_DIR:=$HOME/projects/LinuxHello/architecture}"
 : "${REPO_SLUG:=LinuxHello/linux-hello}"
 : "${LH_EXAMPLE_BRIEF:=106}"
 : "${LH_DRAFT_MAX_TURNS:=30}"
+# Claude Code compacts at window - min(max reply, 20000) - 13000, so at its default reply size a 32k
+# window has no room for a prompt at all ("Prompt is too long", measured 2026-11-08).
+: "${LH_DRAFT_MAX_OUTPUT:=6000}"
 : "${LH_DRAFT_DIR:=${XDG_CACHE_HOME:-$HOME/.cache}/linux-hello-drafts}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -89,9 +92,10 @@ trap 'lh_model_release' EXIT
 mkdir -p "$LH_DRAFT_DIR"
 log "drafting with $OLLAMA_MODEL (window $LH_NUM_CTX); the model can only read $CLONE_DIR"
 # claude_local_run execs, so it runs in a subshell. No GitHub credential reaches it.
-raw=$(env -u GH_TOKEN -u GITHUB_TOKEN NAME=draft CLONE_DIR="$CLONE_DIR" bash -c '
+raw=$(env -u GH_TOKEN -u GITHUB_TOKEN CLAUDE_CODE_MAX_OUTPUT_TOKENS="$LH_DRAFT_MAX_OUTPUT" NAME=draft CLONE_DIR="$CLONE_DIR" bash -c '
   source "$1"; claude_local_run -p "$2" --allowedTools "Read Grep Glob" --max-turns "$3"' _ \
-  "$HERE/claude-local-lib.sh" "$prompt" "$LH_DRAFT_MAX_TURNS") || die "the model run failed"
+  "$HERE/claude-local-lib.sh" "$prompt" "$LH_DRAFT_MAX_TURNS" </dev/null) \
+  || { printf '%s\n' "$raw" >&2; die "the model run failed (its output is above)"; }
 
 # Keep only the document: from its first line to the end.
 if [[ "$kind" == brief ]]; then
