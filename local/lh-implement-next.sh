@@ -18,12 +18,9 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 log() { printf '==> %s\n' "$*"; }
 
 env_file="${LH_ENV_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/linux-hello/implementer.env}"
-if [[ -f "$env_file" ]]; then
-  set -a
-  # shellcheck source=/dev/null
-  source "$env_file"
-  set +a
-fi
+# shellcheck source=local/lh-env.sh
+source "$HERE/lh-env.sh"
+lh_load_env "$env_file"
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
 : "${REPO_SLUG:=LinuxHello/linux-hello}"
 : "${OLLAMA_HOST:=http://127.0.0.1:11434}"

@@ -147,6 +147,7 @@ image-mirror:
 
 # --- Checks ---------------------------------------------------------------------------------
 test:
+	bash local/test-lh-env.sh
 	bash local/test-lh-implement-next.sh
 	bash local/test-lh-branch.sh
 	bash local/test-lh-brief.sh
