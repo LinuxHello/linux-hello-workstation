@@ -14,7 +14,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
-        claude-gpu claude-cpu tpm-dev-deps vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
+        claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
         vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid image-check image-mirror implement implement-next draft-brief draft-adr models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
@@ -40,6 +40,10 @@ help:
 	@echo
 	@echo "Spike prerequisites (Ubuntu)"
 	@echo "  make tpm-dev-deps         install what the TPM spikes need: tss2 dev libraries, clang, swtpm, tpm2-tools (asks for sudo)"
+	@echo
+	@echo "Architecture decision records"
+	@echo "  make adr-tools            install adr-tools (asks for sudo) and point it at the architecture repository's adr/"
+	@echo "  make adr TITLE='...'      create the next numbered ADR there from templates/adr.md, status Proposed (nothing committed)"
 	@echo
 	@echo "Test VM (Ubuntu, KVM, emulated TPM; for the virtual CTAP spike and any test that must not touch this machine)"
 	@echo "  Every vm-* target takes VM_RELEASE=24.04 (default) or 26.04: each release has its own image, disk and ssh port"
@@ -100,6 +104,18 @@ tpm-dev-deps:
 	@missing=; for p in $(TPM_DEV_PKGS); do dpkg -s $$p >/dev/null 2>&1 || missing="$$missing $$p"; done; \
 	 if [ -z "$$missing" ]; then echo "tpm-dev-deps: everything is installed"; \
 	 else echo "installing:$$missing"; sudo apt-get install -y $$missing; fi
+
+# --- ADR tooling -----------------------------------------------------------------------------
+# adr-tools (https://github.com/npryce/adr-tools) provides the `adr` command. Ubuntu packages it, so
+# apt is enough. scripts/adr.sh points it at the architecture repository ($(ARCH_REPO_DIR)/adr) and
+# makes it use that repository's template, which adr-tools' own numbering and wording do not match.
+adr-tools:
+	@if command -v adr >/dev/null 2>&1; then echo "adr-tools: already installed ($$(command -v adr))"; \
+	 else echo "installing: adr-tools"; sudo apt-get install -y adr-tools; fi
+	@bash scripts/adr.sh setup
+adr:
+	@test -n "$(TITLE)" || { echo "usage: make adr TITLE='...'"; exit 1; }
+	@bash scripts/adr.sh new "$(TITLE)"
 
 # --- Test VM ---------------------------------------------------------------------------------
 # scripts/vm.sh says what each step does. Each release has its own state directory and ssh port, so
