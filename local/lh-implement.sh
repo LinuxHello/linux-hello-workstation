@@ -42,6 +42,11 @@
 #      issue-<n> (or LH_BRANCH), opens a draft PR.
 # The model's process gets no GitHub or git credential.
 set -euo pipefail
+# The implementer's settings (implementer.env, or LH_ENV_FILE) apply to a manual run as to the
+# loop; anything the caller set, such as LH_HARNESS from `make implement HARNESS=..`, wins.
+# shellcheck source=local/lh-env.sh
+source "$(cd "$(dirname "$0")" && pwd)/lh-env.sh"
+lh_load_env "${LH_ENV_FILE:-}"
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
 : "${REPO_SLUG:=LinuxHello/linux-hello}"
 : "${OLLAMA_HOST:=http://127.0.0.1:11434}"
