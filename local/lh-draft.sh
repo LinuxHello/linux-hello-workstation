@@ -61,8 +61,11 @@ THE ISSUE TO WRITE THE BRIEF FOR:
 $issue
 
 Read the files in the repository that the issue names, to get real function names, types and test
-helpers right. Never invent an API: if you did not read it, say so in the brief. Quote the invariants
-that apply. Answer with the brief only, in Markdown, starting with the line '## Implementation brief'."
+helpers right. Your context window is small and cannot be compacted, so: read at most 6 files in all;
+find the part you need with Grep first and then Read only that part (always pass offset and limit, at
+most 120 lines per Read); never read a file twice. Never invent an API: if you did not read it, say so
+in the brief. Quote the invariants that apply. Answer with the brief only, in Markdown, starting with
+the line '## Implementation brief'."
 else
   title=$2
   decision=$3; [[ ! -f "$decision" ]] || decision=$(<"$decision")
