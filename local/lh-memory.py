@@ -16,6 +16,7 @@ import argparse
 import datetime as dt
 import hashlib
 import os
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,7 +64,12 @@ def cmd_index(a):
               indexer.index_notes(mem.store_for("private"), emb, notes, "vault"))
     for spec in env("LH_MEMORY_ISSUES").split():
         tier, slug = core.parse_repo_spec(spec) if spec.split(":")[0] in core.TIERS else ("private", spec)
-        issues = indexer.fetch_issues(slug)
+        try:
+            issues = indexer.fetch_issues(slug)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            err = (getattr(e, "stderr", "") or str(e)).strip().splitlines()
+            print(f"issues {slug}: skipped ({err[-1] if err else e})", file=sys.stderr)
+            continue
         print(f"issues {slug} ({tier}):", indexer.index_issues(mem.store_for(tier), emb, slug, tier, issues,
                                                               prune=len(issues) < 500))
 
