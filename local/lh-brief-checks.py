@@ -26,7 +26,7 @@ NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
 SOURCE = re.compile(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|py|sh))(?::\d+(?:-\d+)?)?`")
 TICK = re.compile(r"`([^`\n]{3,})`")
 ISSUE = re.compile(r"(?<![\w/])#(\d{1,5})\b")
-TEST_NAME = re.compile(r"[a-z][a-z0-9_]{1,80}")
+FN = re.compile(r"\bfn[ \t]+([A-Za-z_][A-Za-z0-9_]*)")
 EXISTING = re.compile(r"existing|already|placeholder|unchanged|replace|remove|verify|keep|still", re.I)
 
 
@@ -66,6 +66,23 @@ def tests_of(body):
         if m:
             names.append((m.group(1), line))
     return names
+
+
+def existing_fns(clone, _cache={}):
+    """Names of the functions in the tracked source files of the clone. The brief's text never
+    reaches a command line: git is run with fixed arguments and the search is done here."""
+    if clone not in _cache:
+        listing = subprocess.run([GIT, "ls-files", "-z", "--", "*.rs", "*.py", "*.sh"], cwd=clone,
+                                 capture_output=True, check=False).stdout.decode("utf-8", "replace")
+        names = set()
+        for rel in filter(None, listing.split("\0")):
+            try:
+                with open(os.path.join(clone, rel), encoding="utf-8") as f:
+                    names.update(FN.findall(f.read()))
+            except (OSError, UnicodeDecodeError):
+                continue
+        _cache[clone] = names
+    return _cache[clone]
 
 
 def main():
@@ -114,11 +131,7 @@ def main():
     for name, line in seen.items():
         if EXISTING.search(line.split("`", 2)[2] if line.count("`") >= 2 else line):
             continue
-        if not TEST_NAME.fullmatch(name):  # only a plain identifier reaches the command line
-            continue
-        r = subprocess.run([GIT, "-C", clone, "grep", "-qwF", "--", f"fn {name}"],
-                           capture_output=True)
-        if r.returncode == 0:
+        if name in existing_fns(clone):
             findings.append(f"TESTS: `{name}` already exists in the repository; if the brief means to change it, say 'existing' beside it, otherwise give the new test another name")
 
     print("\n".join(findings))
