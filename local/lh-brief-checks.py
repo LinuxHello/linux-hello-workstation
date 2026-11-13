@@ -15,8 +15,11 @@ sections of a brief that a model glosses over, and cannot talk themselves into p
 Tested by local/test-lh-draft.sh.
 """
 import re
+import shutil
 import subprocess
 import sys
+
+GIT = shutil.which("git") or "git"  # one resolved path, not a search of PATH at each call
 
 NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
 SOURCE = re.compile(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|py|sh))(?::\d+(?:-\d+)?)?`")
@@ -25,9 +28,20 @@ ISSUE = re.compile(r"(?<![\w/])#(\d{1,5})\b")
 EXISTING = re.compile(r"existing|already|placeholder|unchanged|replace|remove|verify|keep|still", re.I)
 
 
+def is_heading(line):
+    """'##', '###' or '####' followed by a space or a tab (no regular expression to backtrack)."""
+    n = len(line) - len(line.lstrip("#"))
+    return 2 <= n <= 4 and len(line) > n and line[n] in " \t"
+
+
 def sections(text):
     """Split at headings: a list of (kind, heading, body)."""
-    parts = re.split(r"^(#{2,4}[ \t]+[^\n]*)$", text, flags=re.M)
+    parts = [""]
+    for line in text.split("\n"):
+        if is_heading(line):
+            parts += [line, ""]
+        else:
+            parts[-1] += line + "\n"
     out = []
     for i in range(1, len(parts), 2):
         head, body = parts[i], parts[i + 1]
@@ -96,7 +110,7 @@ def main():
     for name, line in seen.items():
         if EXISTING.search(line.split("`", 2)[2] if line.count("`") >= 2 else line):
             continue
-        r = subprocess.run(["git", "-C", clone, "grep", "-qwF", "--", f"fn {name}"],
+        r = subprocess.run([GIT, "-C", clone, "grep", "-qwF", "--", f"fn {name}"],
                            capture_output=True)
         if r.returncode == 0:
             findings.append(f"TESTS: `{name}` already exists in the repository; if the brief means to change it, say 'existing' beside it, otherwise give the new test another name")

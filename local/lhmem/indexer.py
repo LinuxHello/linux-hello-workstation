@@ -12,7 +12,11 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
+
+GIT = shutil.which("git") or "git"
+GH = shutil.which("gh") or "gh"
 
 from . import core
 
@@ -129,7 +133,7 @@ def index_notes(store, emb, vault, scope):
 
 
 def _git(path, *args, text=True):
-    return subprocess.run(["git", "-C", path, *args], capture_output=True, text=text, check=True).stdout
+    return subprocess.run([GIT, "-C", path, *args], capture_output=True, text=text, check=True).stdout
 
 
 def index_repo(store, emb, path, scope, tier):
@@ -178,7 +182,7 @@ def index_repo(store, emb, path, scope, tier):
 
 
 def fetch_issues(slug, limit=500):
-    out = subprocess.run(["gh", "issue", "list", "--repo", slug, "--state", "all", "--limit", str(limit),
+    out = subprocess.run([GH, "issue", "list", "--repo", slug, "--state", "all", "--limit", str(limit),
                           "--json", "number,title,body,state,updatedAt,comments"],
                          capture_output=True, text=True, check=True).stdout
     return json.loads(out)

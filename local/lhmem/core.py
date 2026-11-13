@@ -13,8 +13,11 @@ import datetime as dt
 import hashlib
 import math
 import re
+import shutil
 import subprocess
 import uuid
+
+GIT = shutil.which("git") or "git"
 
 TIERS = ("public", "private")
 # Lower ranks first. Live code outranks any note about it; a reviewed decision outranks a claim; an
@@ -96,12 +99,12 @@ def missing_identifiers(text, clone, limit=12):
         if not _checkable(name):
             continue
         if "/" in name or re.search(r"\.[A-Za-z]{1,5}$", name):
-            r = subprocess.run(["git", "-C", clone, "ls-files", "--", name], capture_output=True, text=True)
+            r = subprocess.run([GIT, "-C", clone, "ls-files", "--", name], capture_output=True, text=True)
             found = bool(r.stdout.strip()) or subprocess.run(
-                ["git", "-C", clone, "grep", "-qwF", "--", name], capture_output=True).returncode == 0
+                [GIT, "-C", clone, "grep", "-qwF", "--", name], capture_output=True).returncode == 0
         else:
             word = name.split("::")[-1]
-            found = subprocess.run(["git", "-C", clone, "grep", "-qwF", "--", word],
+            found = subprocess.run([GIT, "-C", clone, "grep", "-qwF", "--", word],
                                    capture_output=True).returncode == 0
         if not found:
             missing.append(name)
