@@ -14,6 +14,7 @@ sections of a brief that a model glosses over, and cannot talk themselves into p
 
 Tested by local/test-lh-draft.sh.
 """
+import os
 import re
 import shutil
 import subprocess
@@ -25,6 +26,7 @@ NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
 SOURCE = re.compile(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|py|sh))(?::\d+(?:-\d+)?)?`")
 TICK = re.compile(r"`([^`\n]{3,})`")
 ISSUE = re.compile(r"(?<![\w/])#(\d{1,5})\b")
+TEST_NAME = re.compile(r"[a-z][a-z0-9_]{1,80}")
 EXISTING = re.compile(r"existing|already|placeholder|unchanged|replace|remove|verify|keep|still", re.I)
 
 
@@ -67,7 +69,9 @@ def tests_of(body):
 
 
 def main():
-    clone = sys.argv[1]
+    clone = os.path.abspath(sys.argv[1])  # absolute, so git cannot read it as an option
+    if not os.path.isdir(clone):
+        sys.exit(f"lh-brief-checks: {clone} is not a directory")
     text = sys.stdin.read()
     secs = sections(text)
     by = {}
@@ -109,6 +113,8 @@ def main():
         seen[name] = line
     for name, line in seen.items():
         if EXISTING.search(line.split("`", 2)[2] if line.count("`") >= 2 else line):
+            continue
+        if not TEST_NAME.fullmatch(name):  # only a plain identifier reaches the command line
             continue
         r = subprocess.run([GIT, "-C", clone, "grep", "-qwF", "--", f"fn {name}"],
                            capture_output=True)
