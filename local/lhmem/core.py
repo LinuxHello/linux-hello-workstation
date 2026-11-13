@@ -54,6 +54,12 @@ def parse_repo_spec(spec):
     return head, rest
 
 
+def split_ref(path):
+    """'/path@ref' -> ('/path', 'ref'); '/path' -> ('/path', None)."""
+    base, sep, ref = path.rpartition("@")
+    return (base, ref) if sep and base and "/" not in ref else (path, None)
+
+
 def now_iso():
     return dt.datetime.now(dt.timezone.utc).isoformat()
 

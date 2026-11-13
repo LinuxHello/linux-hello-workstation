@@ -136,14 +136,26 @@ def _git(path, *args, text=True):
     return subprocess.run([GIT, "-C", path, *args], capture_output=True, text=text, check=True).stdout
 
 
-def index_repo(store, emb, path, scope, tier):
-    """The tracked files of a repository as committed at HEAD (the working tree is not read)."""
+def resolve_ref(path, ref=None):
+    """The commit to index: <ref>, else origin/main, else main. Never the checked-out branch: the clone
+    of a working repository is usually on someone's in-flight branch, and its code is not the project's."""
+    for cand in ([ref] if ref else ["origin/main", "main"]):
+        r = subprocess.run([GIT, "rev-parse", "--verify", "--quiet", cand + "^{commit}"], cwd=path,
+                           capture_output=True, text=True, check=False)
+        if r.returncode == 0:
+            return cand, r.stdout.strip()
+    raise ValueError(f"{path} has no {ref or 'origin/main or main'} to index; name one with <tier>:<path>@<ref>")
+
+
+def index_repo(store, emb, path, scope, tier, ref=None):
+    """The tracked files of a repository as committed at <ref> (default origin/main, else main). The
+    working tree and the checked-out branch are not read."""
     if tier not in core.TIERS:
         raise core.TierError(f"bad tier {tier!r}")
     summary = dict(added=0, changed=0, removed=0, unchanged=0)
-    head = _git(path, "rev-parse", "HEAD").strip()
+    ref, head = resolve_ref(path, ref)
     existing, seen = store.source_hashes(scope), set()
-    listing = _git(path, "ls-tree", "-r", "-l", "-z", "HEAD", text=False).decode("utf-8", "replace")
+    listing = _git(path, "ls-tree", "-r", "-l", "-z", head, text=False).decode("utf-8", "replace")
     for entry in filter(None, listing.split("\0")):
         meta_part, _, rel = entry.partition("\t")
         _, otype, sha, size = meta_part.split(None, 3)
