@@ -30,7 +30,7 @@ SH
 cat > "$work/bin/claude" <<'SH'
 #!/usr/bin/env bash
 echo "$*" > "$STUB_DIR/claude.args"
-echo "token=${GH_TOKEN:-unset} out=${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-unset}" > "$STUB_DIR/claude.env"
+echo "token=${GH_TOKEN:-unset} out=${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-unset} base=${LH_CLAUDE_BASE_URL:-unset}" > "$STUB_DIR/claude.env"
 cp "$STUB_DIR/srv/loaded" "$STUB_DIR/loaded.during"
 cat "$STUB_DIR/answer"
 SH
@@ -49,9 +49,10 @@ check "a_brief_draft_is_written" "$([[ $rc -eq 0 && -f "$work/drafts/brief-7.md"
 check "preamble_before_the_heading_is_dropped" "$([[ "$(head -1 "$work/drafts/brief-7.md")" == "## Implementation brief" ]]; echo $?)"
 check "the_draft_model_was_the_only_one_loaded_during_the_run" "$([[ "$(tr -d '\n' < "$work/loaded.during")" == qwen38-27b-text-32k:latest ]]; echo $?)"
 check "the_draft_model_is_unloaded_afterwards" "$([[ -z "$(tr -d '\n ' < "$work/srv/loaded")" ]]; echo $?)"
-check "the_model_can_only_read" "$(grep -q 'allowedTools Read Grep Glob' "$work/claude.args"; echo $?)"
+check "the_first_brief_pass_has_no_tools" "$(grep -qE -- '--tools  ?--max-turns 3'  "$work/claude.args"; echo $?)"
 check "the_model_gets_no_github_token" "$(grep -q "token=unset" "$work/claude.env"; echo $?)"
 check "the_reply_cap_leaves_room_in_a_small_window" "$(grep -q "out=6000" "$work/claude.env"; echo $?)"
+check "thinking_is_switched_off_through_the_relay" "$(grep -qE 'base=http://127.0.0.1:[0-9]+' "$work/claude.env"; echo $?)"
 check "nothing_is_posted_to_github" "$(! grep -Eq 'issue (comment|edit|create|close)|pr ' "$work/gh.log"; echo $?)"
 check "test_names_are_counted_for_the_implementer_gate" "$(grep -q '1 test name' "$work/out"; echo $?)"
 
@@ -71,6 +72,89 @@ SH
 printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
 rc=0; bash "$here/lh-draft.sh" brief 9 > "$work/out" 2>&1 || rc=$?
 check "a_model_in_use_by_a_session_is_not_evicted" "$([[ $rc -ne 0 ]] && grep -q 'interactive session' "$work/out"; echo $?)"
+
+printf '#!/usr/bin/env bash\nexit 1\n' > "$work/bin/pgrep"
+# Refining: a brief with a hedge and a name that exists nowhere is sent back; a clean one is not.
+printf '## Implementation brief\n### 3. Properties and tests first\n- `hedged_test_name`: works.\nCall `ghost_helper_fn` (unverified: check api.rs).\n' > "$work/answer"
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+rc=0; bash "$here/lh-draft.sh" brief 10 > "$work/out" 2>&1 || rc=$?
+check "a_hedged_brief_is_sent_back_for_refining" "$([[ $rc -eq 0 ]] && grep -q 'refine round 1' "$work/out" && grep -q 'refine round 2' "$work/out" && grep -q 'DEFECTS FOUND' "$work/claude.args"; echo $?)"
+check "refining_can_only_read" "$(grep -q 'tools Read,Grep,Glob --allowedTools Read Grep Glob' "$work/claude.args"; echo $?)"
+check "the_defects_name_the_hedge_and_the_missing_name" "$(grep -q 'ghost_helper_fn' "$work/out" && grep -q 'HEDGES' "$work/out"; echo $?)"
+check "each_refined_version_is_kept" "$([[ -f "$work/drafts/brief-10.md.round0" ]]; echo $?)"
+check "what_is_still_open_is_reported" "$(grep -q 'still open after refining' "$work/out"; echo $?)"
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf '## Implementation brief\n### 3. Properties and tests first\n- `clean_test_name`: works.\n' > "$work/answer"
+rc=0; bash "$here/lh-draft.sh" brief 11 > "$work/out" 2>&1 || rc=$?
+check "a_clean_brief_is_not_refined" "$([[ $rc -eq 0 ]] && ! grep -q 'refine round' "$work/out"; echo $?)"
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf '## Implementation brief\n- `hedged_test_name`: works. (unverified)\n' > "$work/answer"
+rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 12 > "$work/out" 2>&1 || rc=$?
+check "rounds_zero_turns_refining_off" "$([[ $rc -eq 0 ]] && ! grep -q 'refine round' "$work/out"; echo $?)"
+
+# Cross-checks on a brief's sections.
+mkdir -p "$work/clone/src"; printf 'pub fn existing_test_name() {}\n' > "$work/clone/src/t.rs"; git -C "$work/clone" add src/t.rs
+printf 'fn existing_test_name() {}\n' > "$work/clone/src/t.rs"
+bad=$'## Implementation brief\n### 1. Goal\nChange `src/lib.rs` and `src/other.rs`.\n### 2. Files\nExactly one file:\n- `src/lib.rs`: x\n- `src/t.rs`: y\n### 3. Properties and tests first\n- `fresh_test_name`: a\n- `fresh_test_name`: b\n- `existing_test_name`: c\n### 6. Out of scope\n`src/t.rs` and #55.\n'
+cc=$(printf '%s\n' "$bad" | python3 -I "$here/lh-brief-checks.py" "$work/clone")
+check "a_stated_file_count_is_checked_against_the_list" "$(grep -q "says 'Exactly one file' but lists 2" <<<"$cc"; echo $?)"
+check "a_source_file_outside_the_files_section_is_found" "$(grep -q 'src/other.rs. is named under .goal' <<<"$cc"; echo $?)"
+check "an_out_of_scope_item_in_files_is_found" "$(grep -q 'src/t.rs. is listed out of scope' <<<"$cc"; echo $?)"
+check "a_duplicate_test_is_found" "$(grep -q 'fresh_test_name. is listed twice' <<<"$cc"; echo $?)"
+check "a_new_test_that_already_exists_is_found" "$(grep -q 'existing_test_name. already exists' <<<"$cc"; echo $?)"
+good=$'## Implementation brief\n### 2. Files\nExactly two files:\n- `src/lib.rs`: x\n- `src/t.rs`: y\n### 3. Properties and tests first\n- `fresh_test_name`: a\n- `existing_test_name`: existing, unchanged\n### 6. Out of scope\nThe bus.\n'
+check "a_consistent_brief_has_no_findings" "$([[ -z "$(printf '%s\n' "$good" | python3 -I "$here/lh-brief-checks.py" "$work/clone")" ]]; echo $?)"
+source "$here/lh-brief.sh"; source "$here/lh-context.sh"
+pts=$(lh_brief_open_points "$work/clone" "" "$bad")
+check "the_lint_reports_inconsistencies" "$(grep -q INCONSISTENT <<<"$pts"; echo $?)"
+
+# The context builder: outlines named files, finds identifiers, ignores files that do not exist.
+source "$here/lh-context.sh"
+mkdir -p "$work/clone/src"
+printf 'pub struct Frame {}\npub fn verify_frame(f: &Frame) {}\n#[cfg(test)]\nmod tests {\n    fn helper() {}\n}\n' > "$work/clone/src/lib.rs"
+git -C "$work/clone" add src/lib.rs
+ctx=$(lh_draft_context "$work/clone" 'Change `verify_frame` in src/lib.rs and gone/missing.rs')
+check "context_outlines_a_named_file" "$(grep -q '### src/lib.rs (6 lines)' <<<"$ctx" && grep -q 'fn verify_frame' <<<"$ctx"; echo $?)"
+check "context_skips_a_file_that_does_not_exist" "$(! grep -q missing.rs <<<"$ctx"; echo $?)"
+check "context_finds_a_named_identifier" "$(grep -q 'Definitions' <<<"$ctx"; echo $?)"
+ctx=$(LH_DRAFT_CONTEXT_BYTES=40 lh_draft_context "$work/clone" 'src/lib.rs')
+check "context_is_capped" "$(grep -q 'cut at 40 bytes' <<<"$ctx"; echo $?)"
+check "no_file_named_is_said_plainly" "$(lh_draft_context "$work/clone" 'nothing here' | grep -q 'names no file'; echo $?)"
+
+# The shared memory (ADR-0019): recalled into the prompt at the public tier, whatever the environment says.
+cat > "$work/bin/gh" <<'SH'
+#!/usr/bin/env bash
+echo "$*" >> "$STUB_DIR/gh.log"
+case "$*" in
+  *"view 77 "*) printf '# Retry limit\n\nthe retry limit is wrong\n' ;;
+  *"--jq"*) printf '## Implementation brief\nexample\n' ;;
+esac
+SH
+cat > "$work/bin/pgrep" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf '## Implementation brief\n### 1. Goal\nDo it.\n### 3. Properties and tests first\n- `a_test_that_fails`: it works.\n' > "$work/answer"
+mem="$work/mem"
+memenv=(LH_MEMORY_DIR="$mem" LH_MEMORY_BACKEND=jsonl LH_EMBED_HOST="$OLLAMA_HOST" LH_EMBED_MODEL=hash-test
+        LH_MEMORY_ENV=/nonexistent LH_MEMORY_PYTHON=python3)
+env "${memenv[@]}" LH_MEMORY_TIER=public python3 "$here/lh-memory.py" remember "public conclusion about the retry limit" --agent a --run r1 --issue 77 > /dev/null
+env "${memenv[@]}" LH_MEMORY_TIER=private python3 "$here/lh-memory.py" remember "private secret about the retry limit" --agent a --run r2 > /dev/null
+
+env "${memenv[@]}" LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
+check "memory_hits_reach_the_drafting_prompt" "$([[ $rc -eq 0 ]] && grep -q 'public conclusion about the retry limit' "$work/claude.args"; echo $?)"
+check "an_unverified_hit_is_marked_in_the_prompt" "$(grep -q 'UNVERIFIED' "$work/claude.args"; echo $?)"
+check "the_prompt_says_a_hit_is_evidence_not_fact" "$(grep -q 'not fact' "$work/claude.args"; echo $?)"
+
+env "${memenv[@]}" LH_MEMORY_TIER=private LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
+check "a_drafting_run_recalls_at_the_public_tier_even_if_the_environment_says_private" "$([[ $rc -eq 0 ]] && ! grep -q 'private secret' "$work/claude.args"; echo $?)"
+
+env "${memenv[@]}" LH_MEMORY_BACKEND=bogus LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
+check "a_memory_that_cannot_be_read_does_not_stop_the_draft" "$([[ $rc -eq 0 ]] && grep -q 'could not be read' "$work/out"; echo $?)"
+
+env "${memenv[@]}" LH_MEMORY_DIR="$work/none" LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
+check "no_memory_set_up_means_no_memory_section" "$([[ $rc -eq 0 ]] && ! grep -q 'PROJECT MEMORY' "$work/claude.args"; echo $?)"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

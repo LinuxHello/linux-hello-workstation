@@ -16,6 +16,8 @@
 #   LH_BG_MODEL   background (Haiku-slot) model (default: OLLAMA_MODEL; a second model
 #                 does not fit in VRAM beside the main one and would evict or offload it)
 #   CLONE_DIR     working directory (default $HOME/projects)
+#   LH_CLAUDE_BASE_URL  where Claude Code sends requests (default OLLAMA_HOST); a loopback relay,
+#                 e.g. lh-nothink-relay.py, goes here. Model checks still use OLLAMA_HOST.
 #   LH_LEAN       1 (default) starts without MCP servers, user settings/plugins and
 #                 skills. Those add roughly 10k+ tokens to every prompt, which costs
 #                 minutes on the CPU instance (about 40 tokens/s). 0 = load everything.
@@ -70,7 +72,7 @@ claude_local_run() {
   [[ "$LH_LEAN" == 0 ]] || lean=(--strict-mcp-config --setting-sources project,local --disable-slash-commands)
 
   exec env "${quiet[@]}" \
-    ANTHROPIC_BASE_URL="$OLLAMA_HOST" \
+    ANTHROPIC_BASE_URL="${LH_CLAUDE_BASE_URL:-$OLLAMA_HOST}" \
     ANTHROPIC_AUTH_TOKEN=ollama \
     ANTHROPIC_MODEL="$OLLAMA_MODEL" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="$OLLAMA_MODEL" \

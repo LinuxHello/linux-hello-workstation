@@ -15,7 +15,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid image-check image-mirror implement implement-next draft-brief draft-adr models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid image-check image-mirror implement implement-next draft-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -35,6 +35,12 @@ help:
 	@echo "  make draft-brief ISSUE=n  a local model drafts the brief into a file (never posts)"
 	@echo "  make draft-adr TITLE=.. DECISION=..  a local model drafts an ADR into a file"
 	@echo "  make models               models loaded now;  make models-unload frees the GPU"
+	@echo
+	@echo "Shared memory of the agents (ADR-0019; settings in ~/.config/linux-hello/memory.env, see local/memory.env.example)"
+	@echo "  make memory-venv          create the virtualenv with lancedb (downloads packages)"
+	@echo "  make memory-index         update the memory from the configured repositories, issues and notes"
+	@echo "  make memory-query Q='..' [TIER=private]   what the memory holds on Q; the tier is public unless you say so"
+	@echo "  make memory-stats | memory-expire         rows per kind; drop unverified agent rows older than 30 days"
 	@echo "  make implementer-env      create ~/.config/linux-hello/implementer.env (never overwrites; make all does this too)"
 	@echo "  make reset                clean the clone (rescues uncommitted work first)"
 	@echo
@@ -91,6 +97,15 @@ draft-brief:
 draft-adr:
 	@test -n "$(TITLE)" -a -n "$(DECISION)" || { echo "usage: make draft-adr TITLE='...' DECISION='text or file'"; exit 1; }
 	@bash local/lh-draft.sh adr "$(TITLE)" "$(DECISION)"
+memory-venv:
+	python3 -m venv $(HOME)/.local/share/linux-hello/venv
+	$(HOME)/.local/share/linux-hello/venv/bin/pip install -r local/memory-requirements.txt
+memory-index: ; @bash local/lh-memory-cli.sh index
+memory-query:
+	@test -n "$(Q)" || { echo "usage: make memory-query Q='text' [TIER=public|private]"; exit 1; }
+	@LH_MEMORY_TIER=$${TIER:-public} bash local/lh-memory-cli.sh query "$(Q)" --clone "$(CLONE_DIR)"
+memory-stats: ; @LH_MEMORY_TIER=$${TIER:-public} bash local/lh-memory-cli.sh stats
+memory-expire: ; @LH_MEMORY_TIER=$${TIER:-public} bash local/lh-memory-cli.sh expire
 models: ; @curl -fsS http://127.0.0.1:11434/api/ps | jq -r '.models[] | "\(.name)  \(.context_length) ctx  \(.size_vram / 1e9 | floor) GB in VRAM"'
 models-unload: ; @for m in $$(curl -fsS http://127.0.0.1:11434/api/ps | jq -r '.models[].name'); do curl -fsS http://127.0.0.1:11434/api/generate -d "{\"model\":\"$$m\",\"keep_alive\":0}" >/dev/null && echo "unloaded $$m"; done
 implementer-env: ; @bash scripts/implementer-env.sh
@@ -172,6 +187,7 @@ test:
 	bash local/test-lh-nothink-relay.sh
 	bash local/test-lh-model.sh
 	bash local/test-lh-draft.sh
+	bash local/test-lh-memory.sh
 	bash scripts/test-triage.sh
 	bash scripts/test-implementer-env.sh
 	bash scripts/test-dco-signoff.sh

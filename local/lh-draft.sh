@@ -7,18 +7,23 @@
 #
 # The draft goes to ${LH_DRAFT_DIR:-~/.cache/linux-hello-drafts}/ and its path is printed. The model
 # can only read the linux-hello clone (Read, Grep, Glob) and gets no GitHub or git credential: this
-# script fetches the issue itself. The model for the role "draft" is loaded first and unloaded after
+# script fetches the issue itself and puts an outline of the files it names in the prompt (lh-context.sh),
+# so the model rarely needs a tool call. Exploring ate the window and compaction cannot work in it. The model for the role "draft" is loaded first and unloaded after
 # (local/lh-model.sh); a model that an interactive session uses is not evicted unless LH_EVICT=1.
 #
 # Environment: CLONE_DIR (linux-hello clone), ARCH_REPO_DIR (architecture clone, for the ADR template),
 # REPO_SLUG, LH_EXAMPLE_BRIEF (issue whose brief is the worked example, default 106),
-# LH_DRAFT_MAX_TURNS (default 30), LH_DRAFT_MAX_OUTPUT (default 6000, Claude Code's cap on one reply), LH_MODELS_ENV and the settings of local/lh-model.sh.
+# LH_THINK (0 default: the model does not think, through local/lh-nothink-relay.py; Qwen's thinking used
+# the whole reply cap and left no answer, measured 2026-11-13), LH_DRAFT_MAX_TURNS (default 8, the ADR run; the brief draft has no tools and 3 turns), LH_DRAFT_CONTEXT_BYTES (default 24000), LH_DRAFT_MAX_OUTPUT (default 6000, Claude Code's cap on one reply), LH_MODELS_ENV and the settings of local/lh-model.sh.
 set -euo pipefail
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
 : "${ARCH_REPO_DIR:=$HOME/projects/LinuxHello/architecture}"
 : "${REPO_SLUG:=LinuxHello/linux-hello}"
 : "${LH_EXAMPLE_BRIEF:=106}"
-: "${LH_DRAFT_MAX_TURNS:=30}"
+: "${LH_DRAFT_MAX_TURNS:=8}"
+: "${LH_THINK:=0}"
+: "${LH_DRAFT_ROUNDS:=2}"
+: "${LH_DRAFT_REFINE_CALLS:=10}"
 # Claude Code compacts at window - min(max reply, 20000) - 13000, so at its default reply size a 32k
 # window has no room for a prompt at all ("Prompt is too long", measured 2026-11-08).
 : "${LH_DRAFT_MAX_OUTPUT:=6000}"
@@ -30,6 +35,10 @@ log() { printf '\033[1m==> %s\033[0m\n' "$*"; }
 source "$HERE/lh-model.sh"
 # shellcheck source=local/claude-local-lib.sh
 source "$HERE/claude-local-lib.sh"
+# shellcheck source=local/lh-context.sh
+source "$HERE/lh-context.sh"
+# shellcheck source=local/lh-memory.sh
+source "$HERE/lh-memory.sh"
 
 kind=${1:-}
 case "$kind" in
@@ -48,6 +57,14 @@ if [[ "$kind" == brief ]]; then
     --jq '[.body] + [.comments[].body] | map(select(test("(?m)^## Implementation brief"))) | last // empty')
   [[ -n "$example" ]] || die "issue #$LH_EXAMPLE_BRIEF has no brief to use as the example (set LH_EXAMPLE_BRIEF)"
   rules=$(sed -n '/^### The brief$/,/^### Review$/p' "$CLONE_DIR/AGENTS.md" | sed '$d')
+  context=$(lh_draft_context "$CLONE_DIR" "$issue")
+  memory=$(lh_memory_recall "$CLONE_DIR" "$issue")
+  [[ -z "$memory" ]] || context+=$'\n\n'"WHAT THE PROJECT MEMORY RECALLS (evidence with its source, kind and date, not fact; the outline above
+is the code as it is now and outranks any note about it. A hit marked NOT IN REPOSITORY cites a name that
+does not exist: do not use that name. Hits marked CONFLICT disagree: do not pick one, settle it from the
+outline or list it under '## Open questions for the lead'. Never state a fact from a hit without naming
+its source):
+$memory"
   out="$LH_DRAFT_DIR/brief-$num.md"
   prompt="You are the lead of a software project and write an implementation brief for a weaker coding model.
 
@@ -60,12 +77,16 @@ $example
 THE ISSUE TO WRITE THE BRIEF FOR:
 $issue
 
-Read the files in the repository that the issue names, to get real function names, types and test
-helpers right. Your context window is small and cannot be compacted, so: read at most 6 files in all;
-find the part you need with Grep first and then Read only that part (always pass offset and limit, at
-most 120 lines per Read); never read a file twice. Never invent an API: if you did not read it, say so
-in the brief. Quote the invariants that apply. Answer with the brief only, in Markdown, starting with
-the line '## Implementation brief'."
+WHAT THE REPOSITORY HOLDS (collected for you from the files and identifiers the issue names; line
+numbers refer to the current main):
+$context
+
+You have no tools and your context window is small: write the brief from the outline above. Never invent
+an API. Where the outline does not show what you need (a type, a function, how something is
+recorded), write the instruction in terms of what the issue says, and put the exact thing, as one line,
+under a final heading '## To look up': a later pass will look each one up. Quote the invariants that
+apply.
+Answer with the brief only, in Markdown, starting with the line '## Implementation brief'."
 else
   title=$2
   decision=$3; [[ ! -f "$decision" ]] || decision=$(<"$decision")
@@ -90,15 +111,42 @@ fi
 lh_role draft
 export OLLAMA_MODEL LH_NUM_CTX
 lh_model_acquire "$OLLAMA_MODEL" || exit 1
-trap 'lh_model_release' EXIT
+RELAY_PID=""
+trap 'lh_model_release; [[ -z "$RELAY_PID" ]] || kill "$RELAY_PID" 2>/dev/null || true' EXIT
 
 mkdir -p "$LH_DRAFT_DIR"
+if [[ "$LH_THINK" == 0 ]]; then
+  relay_port_file=$(mktemp)
+  python3 -I "$HERE/lh-nothink-relay.py" "$OLLAMA_HOST" >"$relay_port_file" 2>/dev/null &
+  RELAY_PID=$!
+  for _ in $(seq 50); do [[ -s "$relay_port_file" ]] && break; sleep 0.1; done
+  relay_port=$(head -1 "$relay_port_file"); rm -f "$relay_port_file"
+  [[ "$relay_port" =~ ^[0-9]+$ ]] || die "thinking-off relay did not start"
+  export LH_CLAUDE_BASE_URL="http://127.0.0.1:$relay_port"
+fi
 log "drafting with $OLLAMA_MODEL (window $LH_NUM_CTX); the model can only read $CLONE_DIR"
-# claude_local_run execs, so it runs in a subshell. No GitHub credential reaches it.
-raw=$(env -u GH_TOKEN -u GITHUB_TOKEN CLAUDE_CODE_MAX_OUTPUT_TOKENS="$LH_DRAFT_MAX_OUTPUT" NAME=draft CLONE_DIR="$CLONE_DIR" bash -c '
-  source "$1"; claude_local_run -p "$2" --allowedTools "Read Grep Glob" --max-turns "$3"' _ \
-  "$HERE/claude-local-lib.sh" "$prompt" "$LH_DRAFT_MAX_TURNS" </dev/null) \
-  || { printf '%s\n' "$raw" >&2; die "the model run failed (its output is above)"; }
+# One model run: prints the raw answer, returns 1 when the run failed. $2 turns, $3 "read" (Read, Grep,
+# Glob) or "none" (no tools: the model can only answer). claude_local_run execs, so it runs in a
+# subshell. No GitHub credential reaches it.
+model_run() {
+  local raw
+  raw=$(env -u GH_TOKEN -u GITHUB_TOKEN CLAUDE_CODE_MAX_OUTPUT_TOKENS="$LH_DRAFT_MAX_OUTPUT" NAME=draft CLONE_DIR="$CLONE_DIR" bash -c '
+    source "$1"
+    # --tools removes every other built-in tool (Bash among them); --allowedTools alone left them to the permission mode.
+    if [[ "$4" == none ]]; then tools=(--tools ""); else tools=(--tools "Read,Grep,Glob" --allowedTools "Read Grep Glob"); fi
+    claude_local_run -p "$2" "${tools[@]}" --max-turns "$3"' _ \
+    "$HERE/claude-local-lib.sh" "$1" "${2:-$LH_DRAFT_MAX_TURNS}" "${3:-read}" </dev/null) \
+    || { printf '%s\n' "$raw" >&2; return 1; }
+  printf '%s\n' "$raw"
+}
+# A brief's first pass has no tools: the outline in the prompt is what it has, and exploring with a
+# small window ran out of turns without an answer (2026-11-13). The refine rounds look things up.
+if [[ "$kind" == brief ]]; then
+  raw=$(model_run "$prompt" 3 none) || die "the model run failed (its output is above)"
+else
+  raw=$(model_run "$prompt") || die "the model run failed (its output is above)"
+fi
+
 
 # Keep only the document: from its first line to the end.
 if [[ "$kind" == brief ]]; then
@@ -109,6 +157,52 @@ fi
 [[ -n "$draft" ]] || { printf '%s\n' "$raw" > "$out.rejected"; die "the model did not answer with the document; raw answer in $out.rejected"; }
 printf '%s\n' "$draft" > "$out"
 log "draft written to $out (not posted anywhere)"
+
+# Refine rounds (brief only): the harness finds hedges and names that exist nowhere, and sends the brief
+# back to the model with that list until it is clean or the rounds are used up. A revision that loses
+# the heading or the test names is dropped and the previous version kept.
+if [[ "$kind" == brief && "$LH_DRAFT_ROUNDS" -gt 0 ]]; then
+  # shellcheck source=local/lh-brief.sh
+  source "$HERE/lh-brief.sh"
+  for round in $(seq "$LH_DRAFT_ROUNDS"); do
+    points=$(lh_brief_open_points "$CLONE_DIR" "$issue" "$draft")
+    [[ -n "$points" ]] || { log "refine: nothing left to resolve after $((round - 1)) round(s)"; break; }
+    log "refine round $round: $(grep -c . <<<"$points") open point line(s)"
+    rprompt="You are the lead of a software project. Below is your draft of an implementation brief for a weaker coding model, and a list of its defects. Fix them.
+
+RULES FOR A BRIEF (from AGENTS.md):
+$rules
+
+THE ISSUE:
+$issue
+
+WHAT THE REPOSITORY HOLDS:
+$context
+
+YOUR DRAFT:
+$draft
+
+DEFECTS FOUND BY THE HARNESS:
+$points
+
+For each defect: look the thing up (Grep, then Read at most 80 lines; at most $LH_DRAFT_REFINE_CALLS tool calls in all) and write the real answer into the brief, or decide it yourself and state the decision as an instruction. The implementer must not be left to find out, to check, or to decide: no 'unverified', no 'if none exists', no 'stop and say'. Resolve every line under '## To look up' and then delete that heading. A name the brief introduces is marked 'new'. Where you truly cannot find an answer, delete the instruction that depends on it and list it, as one line, under a final heading '## Open questions for the lead'. Keep everything else as it is. Answer with the whole revised brief only, in Markdown, starting with the line '## Implementation brief'."
+    if ! rraw=$(model_run "$rprompt" "$((LH_DRAFT_REFINE_CALLS + 4))" read); then
+      printf 'WARNING: refine round %s failed; keeping the previous version\n' "$round" >&2; break
+    fi
+    revised=$(sed -n '/^## Implementation brief/,$p' <<<"$rraw")
+    printf '%s\n' "$draft" > "$out.round$((round - 1))"
+    # A revision is dropped when it has no heading or names fewer tests than the version it replaces
+    # (a draft without the bullet format has none, and a revision may still be the better brief).
+    if [[ -z "$revised" ]] || [[ "$(lh_brief_test_names "$revised" | grep -c .)" -lt "$(lh_brief_test_names "$draft" | grep -c .)" ]]; then
+      printf 'WARNING: round %s gave no usable brief; keeping the previous version (raw answer in %s.rejected)\n' "$round" "$out" >&2
+      printf '%s\n' "$rraw" > "$out.rejected"; break
+    fi
+    draft=$revised
+    printf '%s\n' "$draft" > "$out"
+  done
+  left=$(lh_brief_open_points "$CLONE_DIR" "$issue" "$draft")
+  [[ -z "$left" ]] || printf 'WARNING: still open after refining, for the lead to settle:\n%s\n' "$left" >&2
+fi
 
 # Cheap checks that the lead would otherwise do first; they do not replace the review.
 if [[ "$kind" == brief ]]; then

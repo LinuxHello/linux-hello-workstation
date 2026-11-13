@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 # Claude Code against the GPU Ollama instance (:11434, gemma4-26b-64k on the 7900XTX).
 # Workstation-only: lives in linux-hello-workstation, never in the public repo.
 #
