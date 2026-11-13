@@ -26,7 +26,6 @@ NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
 SOURCE = re.compile(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|py|sh))(?::\d+(?:-\d+)?)?`")
 TICK = re.compile(r"`([^`\n]{3,})`")
 ISSUE = re.compile(r"(?<![\w/])#(\d{1,5})\b")
-FN = re.compile(r"\bfn[ \t]+([A-Za-z_][A-Za-z0-9_]*)")
 EXISTING = re.compile(r"existing|already|placeholder|unchanged|replace|remove|verify|keep|still", re.I)
 
 
@@ -70,18 +69,13 @@ def tests_of(body):
 
 def existing_fns(clone, _cache={}):
     """Names of the functions in the tracked source files of the clone. The brief's text never
-    reaches a command line: git is run with fixed arguments and the search is done here."""
+    reaches a command line and no file is opened by path: git runs with fixed arguments in the clone
+    and the names are read from its output."""
     if clone not in _cache:
-        listing = subprocess.run([GIT, "ls-files", "-z", "--", "*.rs", "*.py", "*.sh"], cwd=clone,
-                                 capture_output=True, check=False).stdout.decode("utf-8", "replace")
-        names = set()
-        for rel in filter(None, listing.split("\0")):
-            try:
-                with open(os.path.join(clone, rel), encoding="utf-8") as f:
-                    names.update(FN.findall(f.read()))
-            except (OSError, UnicodeDecodeError):
-                continue
-        _cache[clone] = names
+        out = subprocess.run([GIT, "grep", "-h", "-o", "-E", r"\bfn[ \t]+[A-Za-z_][A-Za-z0-9_]*", "--",
+                              "*.rs", "*.py", "*.sh"], cwd=clone, capture_output=True,
+                             check=False).stdout.decode("utf-8", "replace")
+        _cache[clone] = {line.split()[-1] for line in out.splitlines() if line.strip()}
     return _cache[clone]
 
 
