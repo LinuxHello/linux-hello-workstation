@@ -26,7 +26,7 @@ export LH_MEMORY_DIR="$work/mem" LH_MEMORY_BACKEND=jsonl LH_EMBED_HOST="http://1
   LH_EMBED_MODEL=hash-test
 lm() { python3 "$here/lh-memory.py" "$@"; }
 
-git -C "$work/repo" init -q
+git -C "$work/repo" init -q -b main
 printf 'pub fn record_uid() {}\n' > "$work/repo/lib.rs"
 git -C "$work/repo" add -A
 git -C "$work/repo" -c user.name=t -c user.email=t@example.org -c commit.gpgsign=false commit -q -m x

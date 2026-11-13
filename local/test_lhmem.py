@@ -53,7 +53,7 @@ def git(path, *args):
 
 def make_repo(files):
     d = tempfile.mkdtemp()
-    git(d, "init", "-q")
+    git(d, "init", "-q", "-b", "main")
     for name, body in files.items():
         p = os.path.join(d, name)
         os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -334,7 +334,31 @@ class Indexing(unittest.TestCase):
         self.assertEqual(kinds["arch:adr/0002-b.md"], "issue")
         self.assertEqual(kinds["arch:src/lib.rs"], "code")
 
-    def test_repo_index_reads_head_not_the_working_tree(self):
+    def test_repo_index_reads_main_not_the_checked_out_branch(self):
+        repo = make_repo({"a.rs": "fn on_main() {}\n"})
+        git(repo, "checkout", "-q", "-b", "issue-1-work")
+        with open(os.path.join(repo, "wip.rs"), "w") as f:
+            f.write("fn unmerged_work() {}\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "wip")
+        store = MemStore()
+        indexer.index_repo(store, HashEmbedder(), repo, "r", "public")
+        text = " ".join(r["text"] for r in store.rows())
+        self.assertIn("on_main", text)
+        self.assertNotIn("unmerged_work", text)
+
+    def test_repo_index_names_its_ref_and_refuses_a_repository_without_main(self):
+        repo = make_repo({"a.rs": "fn a() {}\n"})
+        git(repo, "branch", "-m", "trunk")
+        with self.assertRaises(ValueError):
+            indexer.index_repo(MemStore(), HashEmbedder(), repo, "r", "public")
+        store = MemStore()
+        indexer.index_repo(store, HashEmbedder(), repo, "r", "public", ref="trunk")
+        self.assertTrue(store.rows())
+        self.assertEqual(core.split_ref("/p/x@trunk"), ("/p/x", "trunk"))
+        self.assertEqual(core.split_ref("/p/x"), ("/p/x", None))
+
+    def test_repo_index_reads_the_ref_not_the_working_tree(self):
         repo = make_repo({"a.rs": "fn committed_version() {}\n"})
         with open(os.path.join(repo, "a.rs"), "w") as f:
             f.write("fn uncommitted_edit() {}\n")

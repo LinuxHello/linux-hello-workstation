@@ -48,6 +48,8 @@ case "$kind" in
 esac
 for c in claude gh jq curl; do command -v "$c" >/dev/null || die "$c not installed"; done
 [[ -d "$CLONE_DIR/.git" ]] || die "$CLONE_DIR is not a git clone"
+branch=$(git -C "$CLONE_DIR" branch --show-current 2>/dev/null || true)
+[[ "$branch" == main ]] || printf 'WARNING: %s is on %s, not main: the outline below shows that branch, which may hold unmerged work the issue does not know about\n' "$CLONE_DIR" "${branch:-a detached HEAD}" >&2
 
 # The instructions and context of the prompt, built before any model is touched.
 if [[ "$kind" == brief ]]; then

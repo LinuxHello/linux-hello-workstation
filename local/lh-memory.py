@@ -54,9 +54,9 @@ def cmd_index(a):
     emb = mem.embedder
     for spec in env("LH_MEMORY_REPOS").split():
         tier, path = core.parse_repo_spec(spec)
-        path = os.path.expanduser(path)
+        path, ref = core.split_ref(os.path.expanduser(path))
         print(f"repo {os.path.basename(path)} ({tier}):", indexer.index_repo(mem.store_for(tier), emb, path,
-                                                                            os.path.basename(path), tier))
+                                                                            os.path.basename(path), tier, ref))
     notes = env("LH_MEMORY_NOTES")
     if notes:
         notes = os.path.expanduser(notes)

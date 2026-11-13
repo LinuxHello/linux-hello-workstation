@@ -156,5 +156,14 @@ check "a_memory_that_cannot_be_read_does_not_stop_the_draft" "$([[ $rc -eq 0 ]] 
 env "${memenv[@]}" LH_MEMORY_DIR="$work/none" LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
 check "no_memory_set_up_means_no_memory_section" "$([[ $rc -eq 0 ]] && ! grep -q 'PROJECT MEMORY' "$work/claude.args"; echo $?)"
 
+# A clone that is not on main is said so: its files may be someone's unmerged work.
+git -C "$work/clone" symbolic-ref HEAD refs/heads/issue-132-work
+printf '## Implementation brief\n### 1. Goal\nDo it.\n### 3. Properties and tests first\n- `a_test_that_fails`: it works.\n' > "$work/answer"
+LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 7 > "$work/out" 2>&1 || true
+check "a_clone_off_main_is_warned_about" "$(grep -q 'is on issue-132-work, not main' "$work/out"; echo $?)"
+git -C "$work/clone" symbolic-ref HEAD refs/heads/main
+LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 7 > "$work/out" 2>&1 || true
+check "a_clone_on_main_is_not_warned_about" "$(! grep -q 'not main' "$work/out"; echo $?)"
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
