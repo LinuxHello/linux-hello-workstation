@@ -1,0 +1,3 @@
+# The shared memory's database (ADR-0019). Installed into a virtualenv by `make memory-venv`.
+lancedb
+pyarrow

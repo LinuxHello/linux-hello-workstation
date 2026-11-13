@@ -4,9 +4,13 @@
 
 <dir>/loaded lists the loaded models, <dir>/log records the /api/generate requests, <dir>/port gets
 the port. /api/ps and /api/tags answer from the files and the arguments, /api/show gives every model
-a 32768-token window, and /api/generate loads a model or, with keep_alive 0, unloads it.
+a 32768-token window, and /api/generate loads a model or, with keep_alive 0, unloads it, and /api/embed answers
+with hash vectors (lhmem.embed.HashEmbedder).
 """
 import http.server, json, os, sys, tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from lhmem.embed import HashEmbedder  # noqa: E402  deterministic stand-in for an embedding model
 
 # The state directory must be a real directory inside the temporary directory: the tests make it
 # with mktemp -d, and nothing else may be written through this argument.
@@ -37,6 +41,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        if self.path == "/api/embed":
+            return self.reply({"embeddings": HashEmbedder(model=req["model"])(req["input"])})
         if self.path == "/api/show":
             return self.reply({"parameters": "num_ctx 32768"})
         open(os.path.join(work, "log"), "a").write(json.dumps(req) + "\n")
