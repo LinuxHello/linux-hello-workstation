@@ -193,7 +193,7 @@ test:
 	bash scripts/test-implementer-env.sh
 	bash scripts/test-dco-signoff.sh
 	bash scripts/test-vm.sh
-	@if command -v shellcheck >/dev/null; then shellcheck -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
+	@if command -v shellcheck >/dev/null; then shellcheck -S warning -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
 	 else echo "shellcheck not installed: sudo apt install shellcheck"; fi
 
 # --- Once -----------------------------------------------------------------------------------

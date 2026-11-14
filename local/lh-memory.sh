@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source it, do not run it. Workstation-only. The harness side of the shared memory (ADR-0019).
 #
 # lh_memory_recall <clone> <text>   prints what the memory holds on <text> as a prompt section, or

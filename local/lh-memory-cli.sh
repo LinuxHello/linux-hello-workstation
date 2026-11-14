@@ -4,6 +4,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 envfile=${LH_MEMORY_ENV:-$HOME/.config/linux-hello/memory.env}
+# shellcheck source=/dev/null  # the maintainer's own settings file
 if [[ -f "$envfile" ]]; then set -a; source "$envfile"; set +a; fi
 py=${LH_MEMORY_PYTHON:-$HOME/.local/share/linux-hello/venv/bin/python}
 [[ -x "$py" ]] || py=python3

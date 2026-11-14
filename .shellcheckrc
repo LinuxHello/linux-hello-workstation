@@ -1,0 +1,9 @@
+# Settings of `make test`'s shellcheck step: shellcheck -S warning -x -P SCRIPTDIR scripts/*.sh local/*.sh
+# (-S warning: fail on warnings and errors only. Style notes such as SC2016 "single quotes do not expand"
+# and SC2015 "A && B || C" are hints, not defects: the tests deliberately put backticks and $ in
+# single-quoted data.)
+
+# The tests' idiom is  check "name" "$([[ condition ]]; echo $?)"  : the status of the condition is
+# captured on purpose. SC2319 warns that $? "refers to a condition, not a command", which is exactly what
+# the idiom wants.
+disable=SC2319

@@ -9,6 +9,7 @@ pass=0; fail=0
 ok()  { pass=$((pass + 1)); echo "ok   $1"; }
 nok() { fail=$((fail + 1)); echo "FAIL $1"; }
 
+# shellcheck disable=SC2120  # some calls pass arguments, some do not
 run() { HOME="$work/home" XDG_CONFIG_HOME="" OLLAMA_HOST=http://127.0.0.1:9 CLONE_DIR="$work/clone" bash "$here/implementer-env.sh" "$@" 2>&1; }
 f="$work/home/.config/linux-hello/implementer.env"
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Reads a brief; sourced, not run. Tested by local/test-lh-brief.sh.
 #
 #   lh_brief_test_names <brief>    the test names of its **Tests first** section, or of a heading that

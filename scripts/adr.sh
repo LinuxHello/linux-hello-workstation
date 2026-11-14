@@ -39,7 +39,10 @@ new() {
   # STATUS as Accepted. Turn the repository's own template into that form so it cannot drift;
   # the heading's four-digit number is filled in below, because NUMBER is not zero-padded.
   local tmpl file id
-  tmpl=$(mktemp); trap "rm -f '$tmpl'" EXIT
+  # The trap expands $tmpl now on purpose: $tmpl is local to this function and gone when EXIT fires.
+  tmpl=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmpl'" EXIT
   sed -e 's/{{date}}/DATE/g' -e 's/{{title}}/TITLE/g' "$ARCH_REPO_DIR/templates/adr.md" > "$tmpl"
 
   file=$(cd "$ARCH_REPO_DIR" && ADR_TEMPLATE="$tmpl" VISUAL=true adr new "$title" | tail -n 1)

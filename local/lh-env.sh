@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Loads the implementer's settings; sourced, not run. Tested by local/test-lh-env.sh.
 # Workstation-only: lives in linux-hello-workstation, never in the public repo.
 #

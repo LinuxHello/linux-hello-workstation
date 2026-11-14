@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Branch selection for lh-implement.sh; sourced, not run. Tested by local/test-lh-branch.sh.
 #
 #   lh_select_branch <branch> <base-ref>

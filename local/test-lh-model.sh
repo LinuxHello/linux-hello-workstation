@@ -15,7 +15,8 @@ check() { # name, condition exit status
 # A stub of the model server (local/stub-ollama.py).
 python3 "$here/stub-ollama.py" "$work" & srv=$!
 for _ in $(seq 50); do [[ -s "$work/port" ]] && break; sleep 0.1; done
-export OLLAMA_HOST="http://127.0.0.1:$(cat "$work/port")"
+port=$(cat "$work/port")
+export OLLAMA_HOST="http://127.0.0.1:$port"
 
 # A stub pgrep: matches the pattern against the command line of a session started on the model in $work/session.
 mkdir -p "$work/bin"

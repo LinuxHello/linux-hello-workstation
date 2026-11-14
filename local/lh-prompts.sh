@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Prompts lh-implement.sh gives the model; sourced, not run. Tested by local/test-lh-prompts.sh.
 #
 #   lh_implement_prompt <brief>               round 1

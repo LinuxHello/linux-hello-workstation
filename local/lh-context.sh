@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source it, do not run it. Workstation-only.
 #
 # lh_draft_context <clone> <text>   prints what a drafting model needs from the repository, taken from
@@ -11,7 +12,7 @@
 
 lh_draft_context() {
   local clone=$1 text=$2 cap=${LH_DRAFT_CONTEXT_BYTES:-24000} maxfiles=${LH_DRAFT_CONTEXT_FILES:-8}
-  local out="" part f n id count=0
+  local out="" f n id count=0
   local -a files=()
 
   # Files the text names, kept when they exist in the clone (by path, or by unique basename).
