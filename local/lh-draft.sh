@@ -60,6 +60,9 @@ if [[ "$kind" == brief ]]; then
   [[ -n "$example" ]] || die "issue #$LH_EXAMPLE_BRIEF has no brief to use as the example (set LH_EXAMPLE_BRIEF)"
   rules=$(sed -n '/^### The brief$/,/^### Review$/p' "$CLONE_DIR/AGENTS.md" | sed '$d')
   context=$(lh_draft_context "$CLONE_DIR" "$issue")
+  facts=$(lh_draft_facts "${ARCH_REPO_DIR:-}")
+  [[ -z "$facts" ]] || context+=$'\n\n'"FACTS THE HARNESS CHECKED (they outrank anything the outline above implies, which comes from a pinned copy):
+$facts"
   memory=$(lh_memory_recall "$CLONE_DIR" "$issue")
   [[ -z "$memory" ]] || context+=$'\n\n'"WHAT THE PROJECT MEMORY RECALLS (evidence with its source, kind and date, not fact; the outline above
 is the code as it is now and outranks any note about it. A hit marked NOT IN REPOSITORY cites a name that

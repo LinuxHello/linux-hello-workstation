@@ -108,6 +108,16 @@ source "$here/lh-brief.sh"; source "$here/lh-context.sh"
 pts=$(lh_brief_open_points "$work/clone" "" "$bad")
 check "the_lint_reports_inconsistencies" "$(grep -q INCONSISTENT <<<"$pts"; echo $?)"
 
+# Out-of-scope names that are not files the brief edits (a prose mention, a bare word, a directory
+# prefix, a C4 owner) are not conflicts; a listed file or a test name that is also out of scope still is.
+fp=$'## Implementation brief\n### 2. Files\nDo not change `src/merge.rs`. Where a bullet names `agent`, that is a C4 owner, not a file.\n- `crates/linuxhello-agent/tests/props.rs`: x\n- `docs/security/properties.md`: y\n### 3. Properties and tests first\n- `fresh_test_name`: a\n### 6. Out of scope\n`src/merge.rs`; all of `crates/`; `agent`; `security/`; `tpmProvider`.\n'
+cc=$(printf '%s\n' "$fp" | python3 -I "$here/lh-brief-checks.py" "$work/clone")
+check "scope_check_ignores_prose_mentions_bare_words_and_directory_prefixes" "$([[ -z "$(grep SCOPE <<<"$cc")" ]]; echo $?)"
+bp=$'## Implementation brief\n### 2. Files\n- `src/lib.rs`: x\n### 3. Properties and tests first\n- `fresh_test_name`: a\n### 6. Out of scope\n`lib.rs`; `fresh_test_name`.\n'
+cc=$(printf '%s\n' "$bp" | python3 -I "$here/lh-brief-checks.py" "$work/clone")
+check "scope_check_matches_a_basename_to_a_listed_path" "$(grep -q 'lib.rs. is listed out of scope' <<<"$cc"; echo $?)"
+check "scope_check_finds_a_test_name_that_is_also_out_of_scope" "$(grep -q 'fresh_test_name. is listed out of scope' <<<"$cc"; echo $?)"
+
 # The context builder: outlines named files, finds identifiers, ignores files that do not exist.
 source "$here/lh-context.sh"
 mkdir -p "$work/clone/src"
@@ -120,6 +130,20 @@ check "context_finds_a_named_identifier" "$(grep -q 'Definitions' <<<"$ctx"; ech
 ctx=$(LH_DRAFT_CONTEXT_BYTES=40 lh_draft_context "$work/clone" 'src/lib.rs')
 check "context_is_capped" "$(grep -q 'cut at 40 bytes' <<<"$ctx"; echo $?)"
 check "no_file_named_is_said_plainly" "$(lh_draft_context "$work/clone" 'nothing here' | grep -q 'names no file'; echo $?)"
+
+# The facts the harness checks for the prompt: the next free ADR number and the highest spike on the
+# architecture repository's main, never on whatever branch is checked out.
+ag="$work/archgit"; mkdir -p "$ag/adr" "$ag/spikes"
+git -C "$ag" init -q -b main
+touch "$ag/adr/0001-a.md" "$ag/adr/0019-shared.md" "$ag/adr/README.md" "$ag/spikes/0094-y.md" "$ag/spikes/0121-x.md" "$ag/spikes/README.md"
+git -C "$ag" add -A; git -C "$ag" -c user.name=t -c user.email=t@example.org -c commit.gpgsign=false commit -q -m x
+git -C "$ag" checkout -q -b wip; touch "$ag/adr/0020-wip.md"; git -C "$ag" add -A
+git -C "$ag" -c user.name=t -c user.email=t@example.org -c commit.gpgsign=false commit -q -m wip
+facts=$(lh_draft_facts "$ag")
+check "facts_name_the_next_free_adr_number" "$(grep -q 'next free ADR number is 0020' <<<"$facts"; echo $?)"
+check "facts_name_the_highest_spike_and_how_spikes_are_numbered" "$(grep -q 'highest spike is 0121' <<<"$facts" && grep -q 'issue number' <<<"$facts"; echo $?)"
+check "facts_come_from_main_not_the_checked_out_branch" "$(! grep -q '0021' <<<"$facts"; echo $?)"
+check "facts_are_empty_without_an_architecture_repository" "$([[ -z "$(lh_draft_facts "$work/nowhere")" ]]; echo $?)"
 
 # The shared memory (ADR-0019): recalled into the prompt at the public tier, whatever the environment says.
 cat > "$work/bin/gh" <<'SH'
@@ -164,6 +188,9 @@ check "a_clone_off_main_is_warned_about" "$(grep -q 'is on issue-132-work, not m
 git -C "$work/clone" symbolic-ref HEAD refs/heads/main
 LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 7 > "$work/out" 2>&1 || true
 check "a_clone_on_main_is_not_warned_about" "$(! grep -q 'not main' "$work/out"; echo $?)"
+
+ARCH_REPO_DIR="$work/archgit" LH_DRAFT_ROUNDS=0 LH_MEMORY_DIR="$work/none" bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
+check "the_brief_prompt_carries_the_checked_facts" "$([[ $rc -eq 0 ]] && grep -q 'next free ADR number is 0020' "$work/claude.args" && grep -q 'never guess a number' "$work/claude.args"; echo $?)"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
