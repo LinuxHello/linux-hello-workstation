@@ -7,6 +7,7 @@
 # Each tick: take the lock; skip if the GPU is busy; pick the first status:ready issue in backlog
 # order (the public repository's scripts/backlog/backlog.sh: priority, no open blocker, lowest
 # number) that has an implementation brief; clean the clone; run lh-implement.sh unattended with a timeout.
+# LH_EVICT_MODELS lists models the loop may take the GPU from (a pinned chat model that is always loaded).
 # On failure the issue goes back to status:ready; after LH_MAX_ATTEMPTS failures it goes to
 # status:blocked with a comment holding the scrubbed tail of the log.
 #
@@ -32,6 +33,7 @@ fi
 : "${LH_MAX_ATTEMPTS:=3}"
 : "${LH_RUN_TIMEOUT:=2h}"
 : "${LH_BUSY_CHECK:=}"
+: "${LH_EVICT_MODELS:=}"
 : "${LH_STATE_DIR:=${XDG_STATE_HOME:-$HOME/.local/state}/linux-hello-implementer}"
 : "${LH_IMPLEMENT:=$HERE/lh-implement.sh}"
 : "${LH_RESET:=$HERE/lh-reset.sh}"
@@ -51,14 +53,22 @@ mkdir -p "$LH_STATE_DIR/attempts" "$LH_STATE_DIR/logs"
 exec 9>"$LH_STATE_DIR/lock"
 flock -n 9 || { log "another run holds the lock; nothing to do"; exit 0; }
 
-# 1. The GPU is free: no model loaded other than ours, and the optional busy hook says not busy.
+# 1. The GPU is free: no model loaded other than ours or one the maintainer let the loop displace
+# (LH_EVICT_MODELS), and the optional busy hook says not busy.
 loaded=$(curl -fsS --max-time 5 "$OLLAMA_HOST/api/ps" | jq -r '.models[]? | .name // .model') \
   || die "model server not reachable at $OLLAMA_HOST"
-others=$(grep -vxF -e "$OLLAMA_MODEL" -e "$LH_BG_MODEL" <<<"$loaded" | grep -v '^$' || true)
+mine=(-e "$OLLAMA_MODEL" -e "$LH_BG_MODEL")
+for m in $LH_EVICT_MODELS; do mine+=(-e "$m"); done
+others=$(grep -vxF "${mine[@]}" <<<"$loaded" | grep -v '^$' || true)
 [[ -z "$others" ]] || { log "GPU busy: another model is loaded; trying again next tick"; exit 0; }
 if [[ -n "$LH_BUSY_CHECK" ]] && bash -c "$LH_BUSY_CHECK"; then
   log "GPU busy (LH_BUSY_CHECK); trying again next tick"; exit 0
 fi
+evict=""
+for m in $LH_EVICT_MODELS; do
+  if grep -qxF -e "$m" <<<"$loaded"; then evict+="$m "; fi
+done
+[[ -z "$evict" ]] || log "taking the GPU from ${evict% } (LH_EVICT_MODELS); lh-implement.sh unloads it for the run"
 
 # 2. The first status:ready issue in backlog order that has an implementation brief.
 [[ -f "$LH_BACKLOG" ]] || die "$LH_BACKLOG missing; update the clone ($CLONE_DIR) to a main that has it"

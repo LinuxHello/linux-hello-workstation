@@ -85,7 +85,7 @@ Status: **untested against a live model and a live user manager.** `make test` t
 One tick of `local/lh-implement-next.sh`:
 
 1. takes a lock, so ticks never overlap;
-2. skips if the model server has another model loaded or `LH_BUSY_CHECK` reports the GPU busy;
+2. skips if the model server has another model loaded (except the ones named in `LH_EVICT_MODELS`, which the run unloads) or `LH_BUSY_CHECK` reports the GPU busy;
 3. picks the first `status:ready` issue in backlog order (`backlog.sh order ready`) that has an `## Implementation brief`;
 4. cleans the clone with `lh-reset.sh -y --main`;
 5. runs `lh-implement.sh` with `LH_UNATTENDED=1` (no sign-off, no signing requirement) under `LH_RUN_TIMEOUT`;
