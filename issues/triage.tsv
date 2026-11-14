@@ -26,3 +26,4 @@
 15	needs-brief	later	-	Its Mermaid dependency map is replaced by blocked-by links; rescope to the spike notes or close
 18	needs-brief	later	-	Deferred until the crates hold real code
 21	in-review	later	-	Maintainer: the tooling is now the private linux-hello-workstation repo (invariant 8); close as superseded?
+131	needs-brief	next	136,147	Umbrella: items 1, 3a and 4 are done (#159, #161, #132); item 2 waits for the unlock-state ADR (#136), item 3b for #147
