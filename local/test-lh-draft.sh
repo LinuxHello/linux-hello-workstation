@@ -31,6 +31,10 @@ SH
 cat > "$work/bin/claude" <<'SH'
 #!/usr/bin/env bash
 echo "$*" > "$STUB_DIR/claude.args"
+echo CALL >> "$STUB_DIR/claude.ncalls"
+# fail_once: the first call answers like a model that tried a tool that does not exist; fail_always: every call does.
+if [[ -f "$STUB_DIR/fail_once" ]]; then rm -f "$STUB_DIR/fail_once"; echo "Error: Reached max turns (3)"; exit 1; fi
+if [[ -f "$STUB_DIR/fail_always" ]]; then echo "Error: Reached max turns (3)"; exit 1; fi
 echo "token=${GH_TOKEN:-unset} out=${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-unset} base=${LH_CLAUDE_BASE_URL:-unset}" > "$STUB_DIR/claude.env"
 cp "$STUB_DIR/srv/loaded" "$STUB_DIR/loaded.during"
 cat "$STUB_DIR/answer"
@@ -194,6 +198,27 @@ check "a_clone_on_main_is_not_warned_about" "$(! grep -q 'not main' "$work/out";
 
 ARCH_REPO_DIR="$work/archgit" LH_DRAFT_ROUNDS=0 LH_MEMORY_DIR="$work/none" bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1; rc=$?
 check "the_brief_prompt_carries_the_checked_facts" "$([[ $rc -eq 0 ]] && grep -q 'next free ADR number is 0020' "$work/claude.args" && grep -q 'never guess a number' "$work/claude.args"; echo $?)"
+
+# The first pass of a brief has no tools, but a local model sometimes calls Read or Glob anyway, burns its
+# turns on "No such tool" and ends with "Reached max turns" (#135, 2026-11-14). The prompt ends with a
+# reminder, and a failed first pass is asked once more.
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf '## Implementation brief\n### 1. Goal\nDo it.\n### 3. Properties and tests first\n- `a_test_that_fails`: it works.\n' > "$work/answer"
+: > "$work/claude.ncalls"
+rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1 || rc=$?
+check "the_brief_prompt_ends_with_the_no_tool_reminder" "$([[ $rc -eq 0 ]] && tr '\n' ' ' < "$work/claude.args" | grep -q "Answer with the brief only.*No tool exists in this session"; echo $?)"
+
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+: > "$work/claude.ncalls"; touch "$work/fail_once"; rm -f "$work/drafts/brief-77.md"
+rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1 || rc=$?
+check "a_first_pass_that_runs_out_of_turns_is_asked_once_more" "$([[ $rc -eq 0 && "$(grep -c CALL "$work/claude.ncalls")" -eq 2 ]] && grep -q 'asking once more' "$work/out" && tr '\n' ' ' < "$work/claude.args" | grep -q 'previous attempt called a tool'; echo $?)"
+check "the_retry_produces_the_draft" "$([[ -f "$work/drafts/brief-77.md" && "$(head -1 "$work/drafts/brief-77.md")" == '## Implementation brief' ]]; echo $?)"
+
+printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+: > "$work/claude.ncalls"; touch "$work/fail_always"
+rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1 || rc=$?
+check "a_second_failure_ends_the_run_after_exactly_one_retry" "$([[ $rc -ne 0 && "$(grep -c CALL "$work/claude.ncalls")" -eq 2 ]] && grep -q 'the model run failed' "$work/out"; echo $?)"
+rm -f "$work/fail_always"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
