@@ -64,6 +64,7 @@ check "a_review_issue_with_no_pr_says_the_label_may_be_wrong" "$(grep -qi 'no pr
 
 b20=$(block 20)
 check "a_brief_issue_says_what_to_check_before_writing_one" "$(grep -q 'blocked' <<<"$b20" && grep -q 'make draft-brief ISSUE=20' <<<"$b20"; echo $?)"
+check "a_brief_issue_says_to_set_the_status_to_ready_after_posting" "$(grep -q 'After you post it' <<<"$b20" && grep -q 'status ready' <<<"$b20" && grep -q 'not the comments' <<<"$b20"; echo $?)"
 
 rm "$work/prs.41" "$work/prs.42" "$work/prs.43"
 out=$(bash "$here/next.sh" "$work/backlog.sh")

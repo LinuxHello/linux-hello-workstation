@@ -26,7 +26,9 @@ hint() {  # hint <lane> <issue>
       echo "        links (last column of its row in issues/triage.tsv, status stays needs-brief; then make triage APPLY=1)."
       echo "        An issue whose blockers are open drops out of this list. (status:blocked means a failed run, not this.)"
       echo "        Otherwise have the draft made, read it against the issue, and post it yourself as a comment:"
-      echo "        make draft-brief ISSUE=$n        a local model drafts it into ~/.cache/linux-hello-drafts/ (posts nothing)" ;;
+      echo "        make draft-brief ISSUE=$n        a local model drafts it into ~/.cache/linux-hello-drafts/ (posts nothing)"
+      echo "        After you post it, set the issue to ready: its row in issues/triage.tsv gets status ready, then make triage APPLY=1."
+      echo "        make next follows the labels, not the comments, so a posted brief changes nothing until you do." ;;
     spike)
       echo "  #$n  a spike: someone with the hardware (or the test VM) has to run it"
       echo "        You decide: run it yourself, or defer it (priority later in issues/triage.tsv)"

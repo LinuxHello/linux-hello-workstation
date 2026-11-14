@@ -151,6 +151,13 @@ got=$(cd "$work" && lh_deleted_tests)
 if [[ "$got" == "removed_placeholder renamed_old" ]]; then ok removed_and_renamed_tests_are_reported_but_edited_and_new_are_not
 else nok removed_and_renamed_tests_are_reported_but_edited_and_new_are_not "got [$got]"; fi
 
+# The bold-key form the lead writes: "**Properties and tests first.**" (a trailing period or colon is allowed),
+# ended by the next bold key. #132's brief used it, so the harness saw no test names (2026-11-14).
+b_bold=$'## Implementation brief\n\n**Goal.** Do it.\n\n**Properties and tests first.**\n\n- `secrets_never_appear_in_logs_errors_or_audit`: enabled and real.\n- `every_unlock_signature_pin_change_and_reset_is_audited`: enabled for the events that exist.\n\n**Constraints (quoted):**\n\n- `not_a_test_name` is a key.\n'
+expect a_bold_key_properties_and_tests_first_is_found "$b_bold" $'secrets_never_appear_in_logs_errors_or_audit\nevery_unlock_signature_pin_change_and_reset_is_audited'
+b_colon=$'## Implementation brief\n\n**Properties and tests first:**\n\n- `a_test_with_a_colon`: x\n\n**Files:**\n\n- `src/x.rs`\n'
+expect a_bold_key_with_a_colon_is_found "$b_colon" "a_test_with_a_colon"
+
 # lh_brief_already_implemented: true only when every test the brief names is already on main and none of
 # them is an ignored placeholder (enabling a placeholder is work to do). Such a brief describes work that
 # merged; running the implementer on it only finds nothing to change (#132, 2026-11-14).
