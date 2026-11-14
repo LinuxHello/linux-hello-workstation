@@ -57,6 +57,16 @@ check "a_remembered_row_is_unverified_until_promoted" "$(LH_MEMORY_TIER=public l
 LH_MEMORY_TIER=public lm promote "$id" --by maintainer
 check "a_promoted_row_loses_the_unverified_mark" "$(! LH_MEMORY_TIER=public lm query "agent concluded" | grep -q UNVERIFIED; echo $?)"
 
+# The default location is the LanceDB volume, in its own directory (ADR-0019; the volume is a required
+# mount, encrypted, and AnythingLLM mounts only its own subdirectory of it). Nothing is created here.
+got=$(env -u LH_MEMORY_DIR python3 -c '
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("lhm", sys.argv[1]); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print(m.memory_dir())' "$here/lh-memory.py")
+check "the_default_memory_directory_is_on_the_lancedb_volume" "$([[ "$got" == /var/lib/lancedb/knowledge ]]; echo $?)"
+check "the_recall_helper_defaults_to_the_same_directory" "$(grep -q 'LH_MEMORY_DIR:-/var/lib/lancedb/knowledge' "$here/lh-memory.sh"; echo $?)"
+check "the_example_config_defaults_to_the_same_directory" "$(grep -q '^LH_MEMORY_DIR=/var/lib/lancedb/knowledge' "$here/memory.env.example"; echo $?)"
+
 if "$py" -c 'import lancedb' 2>/dev/null; then
   lmlance() { "$py" "$here/lh-memory.py" "$@"; }
   LH_MEMORY_DIR="$work/lance" LH_MEMORY_BACKEND=lancedb lmlance index > "$work/lance.out" 2>&1

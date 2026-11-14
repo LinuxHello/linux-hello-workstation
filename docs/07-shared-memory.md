@@ -33,7 +33,7 @@ The design is [ADR-0019](https://github.com/LinuxHello/architecture/blob/main/ad
    | `LH_MEMORY_REPOS` | Repositories to index, each `public:<path>` or `private:<path>`. A path with no prefix is **private**. A repository is public only if you say so. Add `@<ref>` to name a branch other than `origin/main` |
    | `LH_MEMORY_ISSUES` | Issues (with the briefs in their comments) of these repositories, read with `gh` |
    | `LH_MEMORY_NOTES` | Your notes vault, text only. Always private. Leave it unset until you want it indexed |
-   | `LH_MEMORY_DIR` | Where the databases live: `<dir>/public` and `<dir>/private` |
+   | `LH_MEMORY_DIR` | Where the databases live: `<dir>/public` and `<dir>/private`. Default `/var/lib/lancedb/knowledge`; leave the line out to use it |
    | `LH_EMBED_HOST`, `LH_EMBED_MODEL` | The embedding server and model |
 
 4. Index:
@@ -77,7 +77,7 @@ Marks you will see, and what to do:
 - Rows live in `<dir>/public` or `<dir>/private`. A public-tier caller never opens the private directory.
 - **Drafting a brief is always public-tier**, whatever `LH_MEMORY_TIER` says in your environment or in `memory.env`. A brief is posted to a public repository, so it must not be able to quote your notes.
 - `make memory-query` is public-tier unless you pass `TIER=private`. That is your choice as the person at the keyboard; do not set `LH_MEMORY_TIER` in a profile.
-- The private directory is created with mode 0700. The database currently sits under your home directory, not on the encrypted volume; moving it is tracked in `LemcheNET/workstation#6`.
+- The default location is `/var/lib/lancedb/knowledge`: the LanceDB volume, which is a required, encrypted, `noexec` mount. AnythingLLM mounts only `/var/lib/lancedb/anythingllm` from it, so it cannot see this directory. The private directory is created with mode 0700. If the volume is not mounted, the index would land on the root disk: check `findmnt /var/lib/lancedb` before the first run. Creating the directory and installing the virtualenv by role is tracked in `LemcheNET/workstation#6`.
 
 ## Maintenance
 

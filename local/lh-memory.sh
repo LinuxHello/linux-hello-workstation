@@ -15,7 +15,7 @@ lh_memory_recall() {
   here=$(dirname "${BASH_SOURCE[0]}")
   # shellcheck disable=SC1090
   [[ ! -f "${LH_MEMORY_ENV:-$HOME/.config/linux-hello/memory.env}" ]] || source "${LH_MEMORY_ENV:-$HOME/.config/linux-hello/memory.env}"
-  [[ -d "${LH_MEMORY_DIR:-$HOME/.local/share/linux-hello/memory}/public" ]] || return 0
+  [[ -d "${LH_MEMORY_DIR:-/var/lib/lancedb/knowledge}/public" ]] || return 0
   py=${LH_MEMORY_PYTHON:-}
   [[ -n "$py" ]] || { py=$HOME/.local/share/linux-hello/venv/bin/python; [[ -x "$py" ]] || py=python3; }
   if ! out=$(LH_MEMORY_TIER=public "$py" "$here/lh-memory.py" query "${text:0:2000}" --k "${LH_MEMORY_RECALL_K:-6}" --clone "$clone" 2>&1); then

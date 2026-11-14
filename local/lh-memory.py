@@ -30,8 +30,17 @@ def env(name, default=""):
     return os.environ.get(name) or default
 
 
+# The LanceDB volume (a required, encrypted mount), in its own directory: AnythingLLM mounts only
+# its own subdirectory of the volume, so it cannot see this one.
+DEFAULT_DIR = "/var/lib/lancedb/knowledge"
+
+
+def memory_dir():
+    return os.path.expanduser(env("LH_MEMORY_DIR", DEFAULT_DIR))
+
+
 def build(tier):
-    base = os.path.expanduser(env("LH_MEMORY_DIR", "~/.local/share/linux-hello/memory"))
+    base = memory_dir()
     backend = env("LH_MEMORY_BACKEND", "lancedb")
     emb = OllamaEmbedder(env("LH_EMBED_HOST", "http://127.0.0.1:11435"), env("LH_EMBED_MODEL", "nomic-embed-text"))
     return core.Memory(lambda t: open_dir_store(base, t, backend), tier, emb)

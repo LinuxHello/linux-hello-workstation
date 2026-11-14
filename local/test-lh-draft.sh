@@ -39,6 +39,8 @@ cat > "$work/bin/pgrep" <<'SH'
 exit 1
 SH
 chmod +x "$work"/bin/*
+# The tests never read the maintainer's real memory or its configuration: the memory tests below set both.
+export LH_MEMORY_ENV=/nonexistent LH_MEMORY_DIR="$work/no-memory"
 export PATH="$work/bin:$PATH" STUB_DIR="$work" CLONE_DIR="$work/clone" ARCH_REPO_DIR="$work/arch" \
   LH_DRAFT_DIR="$work/drafts" LH_MODELS_ENV=/nonexistent GH_TOKEN=secret
 
