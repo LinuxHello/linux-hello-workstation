@@ -158,6 +158,19 @@ expect a_bold_key_properties_and_tests_first_is_found "$b_bold" $'secrets_never_
 b_colon=$'## Implementation brief\n\n**Properties and tests first:**\n\n- `a_test_with_a_colon`: x\n\n**Files:**\n\n- `src/x.rs`\n'
 expect a_bold_key_with_a_colon_is_found "$b_colon" "a_test_with_a_colon"
 
+# lh_brief_files: the files the brief lets the implementer edit. The forms the lead writes: "**Files:**", a
+# "### 2. Files" heading, and a bold key that goes on after "Files" ("**Files (at most three, all listed):**",
+# #132, 2026-11-14: the implementer found 0 files and failed twice, which counts toward blocking the issue).
+files_of() { ( cd "$work" && lh_brief_files "$1" | tr '\n' ' ' ); }
+f_plain=$'## Implementation brief\n**Files:**\n- `crates/a/src/x.rs`: one\n- `docs/y.md`: two\n\n**Properties and tests first.**\n- `some_test_name_here`: a\n'
+f_head=$'## Implementation brief\n### 2. Files\n\n- `crates/a/src/x.rs`: one\n- Never edit `crates/other/z.yml`.\n\n### 3. Properties and tests first\n'
+f_paren=$'## Implementation brief\n\n**Files (at most three, all listed):**\n\n1. `crates/a/tests/p.rs` — the placeholders.\n2. `docs/security/properties.md` — two rows.\n3. `crates/a/src/audit.rs` — doc comments only.\n\n**Properties and tests first.**\n\n- `a_test_name_here`: x\n'
+f_none=$'## Implementation brief\n**Goal.** Do it.\n'
+[[ "$(files_of "$f_plain")" == "crates/a/src/x.rs docs/y.md " ]] && ok files_after_a_plain_bold_key_are_found || nok files_after_a_plain_bold_key_are_found "got [$(files_of "$f_plain")]"
+[[ "$(files_of "$f_head")" == "crates/a/src/x.rs " ]] && ok files_under_a_heading_are_found_and_a_prose_mention_is_not || nok files_under_a_heading_are_found_and_a_prose_mention_is_not "got [$(files_of "$f_head")]"
+[[ "$(files_of "$f_paren")" == "crates/a/tests/p.rs docs/security/properties.md crates/a/src/audit.rs " ]] && ok files_after_a_bold_key_with_words_and_a_numbered_list_are_found || nok files_after_a_bold_key_with_words_and_a_numbered_list_are_found "got [$(files_of "$f_paren")]"
+[[ -z "$(files_of "$f_none")" ]] && ok a_brief_without_a_files_section_has_no_files || nok a_brief_without_a_files_section_has_no_files "got [$(files_of "$f_none")]"
+
 # lh_brief_already_implemented: true only when every test the brief names is already on main and none of
 # them is an ignored placeholder (enabling a placeholder is work to do). Such a brief describes work that
 # merged; running the implementer on it only finds nothing to change (#132, 2026-11-14).

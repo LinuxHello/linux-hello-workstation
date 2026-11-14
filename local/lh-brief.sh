@@ -119,3 +119,27 @@ for line in out.split("\n"):
 sys.exit(0 if all(n in fns and not fns[n] for n in names) else 1)
 PY
 }
+
+# lh_brief_files <brief>   the files the brief lets the implementer edit, one per line. The list sits under
+# "**Files:**", under a bold key that goes on after "Files" ("**Files (at most three, all listed):**"), or
+# under a "### N. Files" heading, and runs to the next heading or bold key. A file is a list item ("-", "*" or
+# "1.") that starts with its backticked path; prose such as "never edit `x.yml`" is not a file. A section
+# with no such items falls back to every quoted path in it. Directories (a submodule pointer) are not
+# editable files. Run it in the clone (the directory test is relative).
+lh_brief_files() {
+  python3 - "$1" <<'PY'
+import os, re, sys
+text = sys.argv[1]
+m = re.search(r"(?:\*\*Files\b[^*\n]*\*\*|^#{2,}[ \t]*(?:\d+\.[ \t]*)?Files[ \t]*$)(.*?)(?=^#{1,6}[ \t]|\n\*\*[A-Z]|\Z)", text, re.S | re.M)
+seen = []
+section = m.group(1) if m else ""
+ext = r"`([A-Za-z0-9_./-]+\.(?:rs|toml|md|txt|yml|yaml|json|sh))`"
+found = [mm.group(1) for line in section.splitlines() if (mm := re.match(r"\s*(?:[-*]|\d+\.)\s+" + ext, line))]
+if not found:
+    found = re.findall(ext, section)
+for p in found:
+    if ("/" in p or p.endswith(".toml")) and not os.path.isdir(p) and p not in seen: seen.append(p)
+if seen: print("\n".join(seen))
+PY
+}
+
