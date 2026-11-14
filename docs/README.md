@@ -38,4 +38,4 @@ Run every command from this repository's root, on the workstation, unless a step
 | Rescued work from `make reset` | `~/.local/state/linux-hello-agent/rescue/<time>-<branch>/` |
 | Implementer run logs | `~/.local/state/linux-hello-implementer/logs/` |
 | Your settings | `~/.config/linux-hello/` (`implementer.env`, `models.env`, `memory.env`); never committed |
-| The shared memory's database | `~/.local/share/linux-hello/memory/` (`LH_MEMORY_DIR`) |
+| The shared memory's database | `/var/lib/lancedb/knowledge/` (`LH_MEMORY_DIR`), on the encrypted LanceDB volume |
