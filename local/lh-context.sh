@@ -87,3 +87,24 @@ lh_brief_open_points() {
   [[ -z "$cross" ]] || printf 'INCONSISTENT (the brief contradicts itself; make the sections agree):\n%s\n' "$cross"
   [[ -z "$missing" ]] || printf 'NAMES NOT FOUND in the repository or the issue (if the brief cites them as existing, find the real one with Grep; if it introduces them, say "new" beside each): %s\n' "$missing"
 }
+
+# lh_draft_facts <architecture repo>   prints the numbers a brief may need to name new notes: the next free
+# ADR number and the highest spike, read from the repository's main (origin/main, else main), never
+# from the checked-out branch. Prints nothing when there is no such repository. The pin of that
+# repository inside linux-hello lags behind its main, and a model reading the pin proposed an ADR
+# number that was already taken (2026-11-14).
+lh_draft_facts() {
+  local arch=${1:-} ref="" cand adr spike
+  [[ -n "$arch" && -d "$arch/.git" ]] || return 0
+  for cand in origin/main main; do
+    if git -C "$arch" rev-parse --verify --quiet "$cand^{commit}" >/dev/null; then ref=$cand; break; fi
+  done
+  [[ -n "$ref" ]] || return 0
+  adr=$(git -C "$arch" ls-tree --name-only "$ref" adr/ | sed -n 's#^adr/\([0-9]\{4\}\)-.*#\1#p' | sort | tail -1)
+  spike=$(git -C "$arch" ls-tree --name-only "$ref" spikes/ | sed -n 's#^spikes/\([0-9]\{4\}\)-.*#\1#p' | sort | tail -1)
+  [[ -n "$adr" || -n "$spike" ]] || return 0
+  printf 'The architecture repository on %s (not whatever branch is checked out): ' "$ref"
+  [[ -z "$adr" ]] || printf 'the highest ADR is %s, so the next free ADR number is %04d; ' "$adr" "$((10#$adr + 1))"
+  [[ -z "$spike" ]] || printf 'the highest spike is %s, and a spike is numbered by its issue number (the spike for issue #136 is spikes/0136-<slug>.md). ' "$spike"
+  printf 'Use these numbers and never guess a number.\n'
+}

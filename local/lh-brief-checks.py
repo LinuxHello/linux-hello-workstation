@@ -26,6 +26,9 @@ NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
 SOURCE = re.compile(r"`([A-Za-z0-9_./-]+\.(?:rs|toml|py|sh))(?::\d+(?:-\d+)?)?`")
 TICK = re.compile(r"`([^`\n]{3,})`")
 ISSUE = re.compile(r"(?<![\w/])#(\d{1,5})\b")
+FILE_BULLET = re.compile(r"^[ \t]*[-*][ \t]+`([^`]+)`", re.M)
+HAS_EXT = re.compile(r"\.[A-Za-z0-9]{1,5}$")
+NEGATION = re.compile(r"\b(do not|don't|never|not change|not touch|untouched|unchanged|out of scope|no other|except)\b", re.I)
 EXISTING = re.compile(r"existing|already|placeholder|unchanged|replace|remove|verify|keep|still", re.I)
 
 
@@ -103,18 +106,26 @@ def main():
 
     if files:
         for kind in ("goal", "tests", "constraints", "other"):
-            for f in sorted(set(SOURCE.findall(joined.get(kind, "")))):
+            # A line that says not to touch a file is not a claim that it is edited.
+            text = "\n".join(l for l in joined.get(kind, "").splitlines() if not NEGATION.search(l))
+            for f in sorted(set(SOURCE.findall(text))):
                 if f not in files and not any(g.endswith("/" + f) or f.endswith("/" + g) for g in files):
                     findings.append(f"FILES: `{f}` is named under '{kind}' but is not in the Files section, which is all the implementer may touch; add it there or take it out")
 
     oos = joined.get("oos", "")
     if oos:
-        scope_text = joined.get("files", "") + "\n" + joined.get("tests", "")
+        # What the brief edits: the bullets of its Files list (a prose line such as "do not change x.rs" is
+        # not one) and its test names. A bare word, a directory prefix or a C4 owner in the out-of-scope
+        # text is not a file or a test, so it cannot conflict.
+        listed = [x for x in FILE_BULLET.findall(joined.get("files", "")) if HAS_EXT.search(x.rsplit("/", 1)[-1])]
+        names = {n for n, _ in tests_of(joined.get("tests", ""))}
+        bullet_text = "\n".join(re.findall(r"^[ \t]*[-*][ \t].*$", joined.get("files", "") + "\n" + joined.get("tests", ""), re.M))
         for name in sorted(set(TICK.findall(oos))):
-            if len(name) >= 5 and name in scope_text:
+            is_file = HAS_EXT.search(name.rsplit("/", 1)[-1]) and not name.endswith("/")
+            if name in names or (is_file and any(p == name or p.endswith("/" + name) for p in listed)):
                 findings.append(f"SCOPE: `{name}` is listed out of scope and also appears in Files or the tests")
         for n in sorted(set(ISSUE.findall(oos))):
-            if re.search(rf"(?<![\w/])#{n}\b", joined.get("files", "") + joined.get("tests", "")):
+            if re.search(rf"(?<![\w/])#{n}\b", bullet_text):
                 findings.append(f"SCOPE: #{n} is listed out of scope and also appears in Files or the tests")
 
     seen = {}
