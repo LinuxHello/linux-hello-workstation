@@ -182,6 +182,7 @@ test:
 	bash local/test-lh-implement-next.sh
 	bash local/test-lh-branch.sh
 	bash local/test-lh-brief.sh
+	bash local/test-lh-status.sh
 	bash local/test-lh-prompts.sh
 	bash local/test-lh-guard.sh
 	bash local/test-lh-nothink-relay.sh

@@ -89,3 +89,32 @@ for i, line in enumerate(diff):
 print(" ".join(sorted(removed - added)))
 PY
 }
+
+# lh_brief_already_implemented <brief>   succeeds when the brief names tests and every one of them already
+# exists on origin/main as a test that is not an ignored placeholder: the work it describes has merged, and
+# running the implementer on it can only find nothing to change. A brief that enables a placeholder, adds a
+# new test, or names none is not "implemented". LH_ALLOW_EXISTING_TESTS=1 turns the check off (for a brief
+# that changes existing tests rather than adding any). Run it in the clone.
+lh_brief_already_implemented() {
+  [[ "${LH_ALLOW_EXISTING_TESTS:-0}" != 1 ]] || return 1
+  local names
+  names=$(lh_brief_test_names "$1")
+  [[ -n "$names" ]] || return 1
+  python3 - "$names" <<'PY'
+import re, subprocess, sys
+names = sys.argv[1].split()
+# One search with fixed arguments: each fn line of main with the three lines above it.
+out = subprocess.run(["git", "grep", "-h", "-B3", "-E", r"^\s*(pub +)?(async +)?fn[ \t]+[A-Za-z_][A-Za-z0-9_]*[ \t]*\(",
+                      "origin/main", "--", "*.rs"], capture_output=True, text=True, check=False).stdout
+fns, window = {}, []
+for line in out.split("\n"):
+    if line == "--":
+        window = []
+        continue
+    m = re.match(r"^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", line)
+    if m:
+        fns[m.group(1)] = any("#[ignore" in w for w in window[-3:])
+    window.append(line)
+sys.exit(0 if all(n in fns and not fns[n] for n in names) else 1)
+PY
+}

@@ -151,5 +151,22 @@ got=$(cd "$work" && lh_deleted_tests)
 if [[ "$got" == "removed_placeholder renamed_old" ]]; then ok removed_and_renamed_tests_are_reported_but_edited_and_new_are_not
 else nok removed_and_renamed_tests_are_reported_but_edited_and_new_are_not "got [$got]"; fi
 
+# lh_brief_already_implemented: true only when every test the brief names is already on main and none of
+# them is an ignored placeholder (enabling a placeholder is work to do). Such a brief describes work that
+# merged; running the implementer on it only finds nothing to change (#132, 2026-11-14).
+( cd "$work" && git checkout -q -- . 2>/dev/null; git clean -fdq
+  printf '%s\n' '#[test]' 'fn already_done_one() {}' '' '#[test]' 'fn already_done_two() {}' '' '#[test]' '#[ignore = "p"]' 'fn open_placeholder_one() {}' > ai.rs
+  git add ai.rs && git commit -qm ai && git update-ref refs/remotes/origin/main HEAD ) >/dev/null 2>&1
+b_all=$'## Implementation brief\n### 3. Properties and tests first\n- `already_done_one`: a\n- `already_done_two`: b\n'
+b_mix=$'## Implementation brief\n### 3. Properties and tests first\n- `already_done_one`: a\n- `brand_new_test`: b\n'
+b_ph=$'## Implementation brief\n### 3. Properties and tests first\n- `open_placeholder_one`: enable it\n'
+b_none=$'## Implementation brief\n### 1. Goal\nDo it.\n'
+implemented() { ( cd "$work" && lh_brief_already_implemented "$1" ); }
+if implemented "$b_all"; then ok a_brief_whose_tests_all_exist_on_main_is_already_implemented; else nok a_brief_whose_tests_all_exist_on_main_is_already_implemented "returned 1"; fi
+if ! implemented "$b_mix"; then ok a_brief_with_one_new_test_is_not_implemented; else nok a_brief_with_one_new_test_is_not_implemented "returned 0"; fi
+if ! implemented "$b_ph"; then ok a_brief_that_enables_an_ignored_placeholder_is_not_implemented; else nok a_brief_that_enables_an_ignored_placeholder_is_not_implemented "returned 0"; fi
+if ! implemented "$b_none"; then ok a_brief_naming_no_tests_is_never_called_implemented; else nok a_brief_naming_no_tests_is_never_called_implemented "returned 0"; fi
+if ! LH_ALLOW_EXISTING_TESTS=1 implemented "$b_all"; then ok LH_ALLOW_EXISTING_TESTS_turns_the_check_off; else nok LH_ALLOW_EXISTING_TESTS_turns_the_check_off "returned 0"; fi
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
