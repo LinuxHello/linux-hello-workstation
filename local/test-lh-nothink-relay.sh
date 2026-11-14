@@ -31,14 +31,19 @@ class H(BaseHTTPRequestHandler):
 s = HTTPServer(("127.0.0.1", 0), H); print(s.server_address[1], flush=True); s.serve_forever()
 PY
 sse=$'event: message_start\ndata: {"type":"message_start"}\n\nevent: message_stop\ndata: {"type":"message_stop"}\n\n'
-start() { # <outfile> <cmd...>: start a server that prints its port, echo the port
+# start runs in this shell, not in a $(...) subshell: the pid must land in $pids, or the EXIT trap kills
+# nothing and every run leaves a stub server and a relay behind. The port comes back in $started_port.
+started_port=""
+start() { # <outfile> <cmd...>: start a server that prints its port; sets started_port
   local out=$1; shift
   "$@" >"$out" 2>"$out.err" & pids+=($!)
   for _ in $(seq 50); do [[ -s "$out" ]] && break; sleep 0.1; done
-  head -1 "$out"
+  started_port=$(head -1 "$out")
 }
-up=$(start "$work/up.port" python3 -I "$work/stub.py" "$work/req.log" "$sse")
-relay=$(start "$work/relay.port" python3 -I "$here/lh-nothink-relay.py" "http://127.0.0.1:$up")
+start "$work/up.port" python3 -I "$work/stub.py" "$work/req.log" "$sse"
+up=$started_port
+start "$work/relay.port" python3 -I "$here/lh-nothink-relay.py" "http://127.0.0.1:$up"
+relay=$started_port
 url="http://127.0.0.1:$relay"
 
 pass=0 fail=0
@@ -86,6 +91,10 @@ else nok upstream_error_reaches_the_client_unchanged "status $code, body $(cat "
 if python3 -I "$here/lh-nothink-relay.py" http://192.0.2.1:11434 >/dev/null 2>&1; then  # NOSONAR shell:S5332 never contacted
   nok non_loopback_upstream_is_refused "relay started"
 else ok non_loopback_upstream_is_refused; fi
+
+# Both servers are tracked, so the trap can stop them.
+if [[ ${#pids[@]} -ge 2 ]] && kill -0 "${pids[0]}" 2>/dev/null && kill -0 "${pids[1]}" 2>/dev/null; then ok the_test_tracks_its_servers_so_none_outlives_it
+else nok the_test_tracks_its_servers_so_none_outlives_it "pids: ${pids[*]-none}"; fi
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

@@ -82,7 +82,9 @@ echo "$attempt" >"$count_file"
 run_log="$LH_STATE_DIR/logs/issue-$issue-$(date -u +%Y%m%dT%H%M%SZ).log"
 log "issue #$issue, attempt $attempt of $LH_MAX_ATTEMPTS; log: $run_log"
 rc=0
-timeout --kill-after=5m "$LH_RUN_TIMEOUT" bash "$LH_IMPLEMENT" "$issue" >"$run_log" 2>&1 || rc=$?
+# stdin is /dev/null: from a terminal, `timeout` puts the implementer in a background process group, and
+# its first read of the terminal would stop the whole group with SIGTTIN (#132, 2026-11-14).
+timeout --kill-after=5m "$LH_RUN_TIMEOUT" bash "$LH_IMPLEMENT" "$issue" >"$run_log" 2>&1 </dev/null || rc=$?
 if [[ $rc == 0 ]]; then
   rm -f "$count_file"
   log "issue #$issue: draft pull request opened"

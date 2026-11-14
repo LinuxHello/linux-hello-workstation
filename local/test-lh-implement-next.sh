@@ -37,6 +37,7 @@ EOF
 cat >"$work/bin/fake-implement" <<'EOF'
 #!/usr/bin/env bash
 echo "implement $1 unattended=$LH_UNATTENDED" >>"$CALLS"
+echo "stdin=$(readlink /proc/$$/fd/0)" >>"$CALLS"
 echo "error in $CLONE_DIR/crates/x.rs on $OLLAMA_MODEL at $OLLAMA_HOST in $HOME"
 exit "${IMPL_RC:-0}"
 EOF
@@ -59,6 +60,7 @@ new_case() {
   FIX="$work/$1"; CALLS="$FIX/calls"; STATE="$FIX/state"; mkdir -p "$FIX"; : >"$CALLS"
   echo '{"models":[]}' >"$FIX/ps.json"
   echo '[]' >"$FIX/list.json"
+  echo x >"$FIX/stdin-source"   # the loop is started with this on stdin, as if it were the terminal
   cat >"$FIX/env" <<EOF
 OLLAMA_MODEL=fake-model:1b
 LH_BG_MODEL=fake-small:1b
@@ -76,7 +78,7 @@ run() {
   export FIX CALLS
   out="$(PATH="$work/bin:$PATH" LH_ENV_FILE="$FIX/env" LH_STATE_DIR="$STATE" \
          LH_IMPLEMENT="$work/bin/fake-implement" LH_RESET="$work/bin/fake-reset" \
-         LH_BACKLOG="$work/bin/fake-backlog" "$@" "$loop" 2>&1)" || status=$?
+         LH_BACKLOG="$work/bin/fake-backlog" "$@" "$loop" 2>&1 <"$FIX/stdin-source")" || status=$?
 }
 ok()  { pass=$((pass + 1)); echo "ok   $1"; }
 nok() { fail=$((fail + 1)); echo "FAIL $1: $2"; echo "     ${out//$'\n'/$'\n'     }"; }
@@ -91,6 +93,15 @@ issue 14 3 yes
 run
 if [[ $status == 0 && "$(implemented)" == "implement 14 unattended=1" ]] && grep -q '^reset -y --main' "$CALLS"
 then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
+# From a terminal, `timeout` puts the implementer in a background process group, and its first read of the
+# terminal (aider, its test command) stops the whole group with SIGTTIN: the run froze, the GPU idle, with
+# the model still loaded (#132, 2026-11-14). The implementer must not inherit the terminal.
+t=the_implementer_does_not_inherit_the_terminal_as_stdin
+new_case "$t"
+issue 14 3 yes
+run
+if [[ $status == 0 ]] && grep -qx 'stdin=/dev/null' "$CALLS"; then ok "$t"; else nok "$t" "status $status, $(grep '^stdin' "$CALLS" || echo 'no stdin line')"; fi
 
 t=higher_priority_wins_over_lower_number
 new_case "$t"
