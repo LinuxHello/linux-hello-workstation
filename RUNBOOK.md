@@ -1,6 +1,6 @@
 # Runbook
 
-Every task is a `make` target; `make help` lists them. This page says **when** to run which, and in which order. Run everything from this repository's root on the workstation. Nothing here asks for a token: `gh` uses your own login.
+Every task is a `make` target; `make help` lists them. This page says **when** to run which, and in which order. For a job from start to end, with what you should see and what to do when it fails, see the [guides](docs/README.md). Run everything from this repository's root on the workstation. Nothing here asks for a token: `gh` uses your own login.
 
 ## I want to…
 

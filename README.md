@@ -16,6 +16,7 @@ make next     # what to pick up now
 | Path | What |
 | :-- | :-- |
 | `Makefile` | The only entry point |
+| `docs/` | [Step-by-step guides](docs/README.md): pick a task, draft a brief, implement, recover from a failed run, review and merge, triage, the shared memory |
 | `scripts/` | GitHub-side tasks: triage, board, labels, sign-off, organisation setup |
 | `local/` | Workstation-side tasks: local Claude Code, implementer, loop, reset, systemd units |
 | `issues/triage.tsv` | Status, priority and blocked-by for each open issue, applied by `make triage` |
