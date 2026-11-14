@@ -66,6 +66,19 @@ Your settings are in `~/.config/linux-hello/implementer.env` (copy the template 
 | `LH_THINK` | 0 | The model does not think (thinking overflowed the window) |
 | `LH_BRANCH` | `issue-<n>` | Use a different branch to run the same brief twice |
 
+## The unattended loop: `make implement-next`
+
+`make implement-next` runs one tick of the loop: it takes the first `status:ready` issue that has a brief and implements it, as `make implement` does. It is meant for a timer; run by hand it does exactly one tick. It does not sign off its commits, it counts failures per issue (after three it sets the issue to `status:blocked` and comments), and it never starts while the GPU is busy.
+
+It prints `GPU busy: another model is loaded; trying again next tick` and does nothing when a model other than the implementer's is loaded. On a host that pins its chat model, that model is always loaded, so the loop would never start. Two settings in `implementer.env` change this:
+
+| Variable | Effect |
+| :-- | :-- |
+| `LH_EVICT_MODELS` | Models the loop may take the GPU from, as `ollama ps` names them, separated by spaces. A model on the list no longer blocks the loop; the run unloads it. The loop prints `taking the GPU from <model>` when it does. A model that is not on the list still blocks it |
+| `LH_BUSY_CHECK` | A command that exits 0 when someone is using the GPU. The loop then waits. Use it with `LH_EVICT_MODELS`; an example for an AMD GPU is in `local/implementer.env.example` |
+
+The pinned chat model comes back by itself once the GPU has been idle for the repin timer's interval. If you want to run one issue now without any of this, `make implement ISSUE=<n>` takes the GPU directly.
+
 ## Limits to know about
 
 - In the default `whole` edit format the model returns each edited file **in full**, and one reply is limited to roughly 8,000 tokens. A file of several hundred lines plus new code does not fit; the model then drops parts of the file. The remedy is in the brief: put new code and tests in a small file and keep the edit to a long file small.

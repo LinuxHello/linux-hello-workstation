@@ -136,6 +136,44 @@ echo '{"models":[{"name":"fake-model:1b"},{"name":"fake-small:1b"}]}' >"$FIX/ps.
 run
 if [[ $status == 0 && "$(implemented)" == "implement 14 unattended=1" ]]; then ok "$t"; else nok "$t" "status $status"; fi
 
+# LH_EVICT_MODELS: models the loop may take the GPU from. On a host that pins its chat model
+# (OLLAMA_KEEP_ALIVE=-1) the loop otherwise never starts: that model is always loaded (2026-11-14).
+t=a_listed_model_does_not_block_the_loop_and_the_takeover_is_logged
+new_case "$t"
+issue 14 3 yes
+echo '{"models":[{"name":"chat-model:27b"}]}' >"$FIX/ps.json"
+run env LH_EVICT_MODELS="chat-model:27b"
+if [[ $status == 0 && "$(implemented)" == "implement 14 unattended=1" ]] && grep -q 'taking the GPU from chat-model:27b' <<<"$out"
+then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
+t=a_model_that_is_not_listed_still_blocks_the_loop
+new_case "$t"
+issue 14 3 yes
+echo '{"models":[{"name":"chat-model:27b"},{"name":"someone-else:7b"}]}' >"$FIX/ps.json"
+run env LH_EVICT_MODELS="chat-model:27b"
+if [[ $status == 0 && -z "$(implemented)" ]] && grep -q 'GPU busy' <<<"$out"; then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
+t=the_busy_hook_still_applies_when_a_listed_model_is_loaded
+new_case "$t"
+issue 14 3 yes
+echo '{"models":[{"name":"chat-model:27b"}]}' >"$FIX/ps.json"
+run env LH_EVICT_MODELS="chat-model:27b" LH_BUSY_CHECK=true
+if [[ $status == 0 && -z "$(implemented)" ]] && grep -q 'LH_BUSY_CHECK' <<<"$out"; then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
+t=several_listed_models_are_all_allowed
+new_case "$t"
+issue 14 3 yes
+echo '{"models":[{"name":"chat-model:27b"},{"name":"second-chat:8b"}]}' >"$FIX/ps.json"
+run env LH_EVICT_MODELS="chat-model:27b second-chat:8b"
+if [[ $status == 0 && "$(implemented)" == "implement 14 unattended=1" ]]; then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
+t=an_empty_list_changes_nothing
+new_case "$t"
+issue 14 3 yes
+echo '{"models":[{"name":"chat-model:27b"}]}' >"$FIX/ps.json"
+run env LH_EVICT_MODELS=""
+if [[ $status == 0 && -z "$(implemented)" ]]; then ok "$t"; else nok "$t" "status $status, $(implemented)"; fi
+
 t=busy_check_hook_claims_nothing
 new_case "$t"
 issue 14 3 yes
