@@ -22,7 +22,8 @@ fi
 mkdir -p "$work/srv" "$work/repo" "$work/vault/Sub" "$work/vault/.obsidian"
 python3 "$here/stub-ollama.py" "$work/srv" & srv=$!
 for _ in $(seq 50); do [[ -s "$work/srv/port" ]] && break; sleep 0.1; done
-export LH_MEMORY_DIR="$work/mem" LH_MEMORY_BACKEND=jsonl LH_EMBED_HOST="http://127.0.0.1:$(cat "$work/srv/port")" \
+port=$(cat "$work/srv/port")
+export LH_MEMORY_DIR="$work/mem" LH_MEMORY_BACKEND=jsonl LH_EMBED_HOST="http://127.0.0.1:$port" \
   LH_EMBED_MODEL=hash-test
 lm() { python3 "$here/lh-memory.py" "$@"; }
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared by claude-local-cpu.sh and claude-local-gpu.sh. Source it, do not run it.
 # Workstation-only: lives in linux-hello-workstation, never in the public repo.
 #
@@ -58,7 +59,7 @@ claude_local_run() {
     die "'$OLLAMA_MODEL' serves num_ctx $served but LH_NUM_CTX is $LH_NUM_CTX; set LH_NUM_CTX=$served"
   fi
 
-  cd "$CLONE_DIR"
+  cd "$CLONE_DIR" || die "cannot enter $CLONE_DIR"
   # Drop any cloud credentials and provider switches inherited from the shell.
   unset ANTHROPIC_API_KEY CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY
   # Switch off telemetry and update checks, except with --remote-control, which itself
@@ -69,6 +70,7 @@ claude_local_run() {
   # Lean prompt: no MCP servers (none are passed via --mcp-config), no user-scope
   # settings (so no user plugins, hooks or memory), no skills.
   local lean=()
+  # shellcheck disable=SC2054  # "project,local" is one argument: a comma-separated list for --setting-sources
   [[ "$LH_LEAN" == 0 ]] || lean=(--strict-mcp-config --setting-sources project,local --disable-slash-commands)
 
   exec env "${quiet[@]}" \

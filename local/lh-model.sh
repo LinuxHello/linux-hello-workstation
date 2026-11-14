@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Model lifecycle for the local scripts; sourced, not run. Tested by local/test-lh-model.sh.
 # Workstation-only: lives in linux-hello-workstation, never in the public repo.
 #
@@ -83,6 +84,8 @@ lh_role() {
   [[ ! -f "$file" ]] || source "$file"
   : "${LH_MODEL_IMPLEMENT:=gemma4-26b-64k:latest}" "${LH_CTX_IMPLEMENT:=65536}"
   : "${LH_MODEL_DRAFT:=qwen38-27b-text-32k:latest}" "${LH_CTX_DRAFT:=32768}"
+  # OLLAMA_MODEL and LH_NUM_CTX are read by the script that sourced this file.
+  # shellcheck disable=SC2034
   case "$role" in
     implement) OLLAMA_MODEL=$LH_MODEL_IMPLEMENT LH_NUM_CTX=$LH_CTX_IMPLEMENT ;;
     draft)     OLLAMA_MODEL=$LH_MODEL_DRAFT LH_NUM_CTX=$LH_CTX_DRAFT ;;

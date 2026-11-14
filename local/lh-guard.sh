@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Checks the model's edits between rounds; sourced, not run. Tested by local/test-lh-guard.sh.
 #
 #   lh_duplicated_files <file>...    the files that hold a second copy of themselves, one per line

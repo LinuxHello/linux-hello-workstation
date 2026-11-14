@@ -14,7 +14,8 @@ check() { if [[ "$2" == 0 ]]; then pass=$((pass + 1)); echo "ok   $1"; else fail
 mkdir -p "$work/srv" "$work/bin" "$work/clone" "$work/arch/templates" "$work/drafts"
 python3 "$here/stub-ollama.py" "$work/srv" qwen38-27b-text-32k:latest gemma4-26b-64k:latest & srv=$!
 for _ in $(seq 50); do [[ -s "$work/srv/port" ]] && break; sleep 0.1; done
-export OLLAMA_HOST="http://127.0.0.1:$(cat "$work/srv/port")"
+port=$(cat "$work/srv/port")
+export OLLAMA_HOST="http://127.0.0.1:$port"
 
 # A clone with the rules the prompt quotes, an ADR template, and stubs for gh and claude.
 git -C "$work/clone" init -q
