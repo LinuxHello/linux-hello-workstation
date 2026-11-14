@@ -189,6 +189,7 @@ test:
 	bash local/test-lh-draft.sh
 	bash local/test-lh-memory.sh
 	bash scripts/test-triage.sh
+	bash scripts/test-next.sh
 	bash scripts/test-implementer-env.sh
 	bash scripts/test-dco-signoff.sh
 	bash scripts/test-vm.sh
