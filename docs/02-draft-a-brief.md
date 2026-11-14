@@ -88,6 +88,14 @@ A brief that is wrong makes the implementer fail slowly (a run takes a long time
 
    The file must start with the line `## Implementation brief`. The implementer uses the **last** comment (or the issue body) that has that heading.
 
+7. **Set the issue to ready.** `make next` and the backlog follow the **labels**, not the comments: a posted brief changes nothing until the status says so. Put the issue's row in `issues/triage.tsv` at `status ready` (keep its priority and blockers), then apply only that row ([guide 6](06-triage-and-labels.md#steps-apply-only-some-rows)):
+
+   ```sh
+   f=$(mktemp); grep -P '^<n>\t' issues/triage.tsv > "$f"; APPLY=1 bash scripts/triage.sh "$f"; rm -f "$f"
+   ```
+
+   Then `make next` lists the issue in the **implement** lane. Before you do, check that the harness reads your test names: `source local/lh-brief.sh; lh_brief_test_names "$(cat ~/.cache/linux-hello-drafts/brief-<n>.md)"` must list them. The implementer's test gate has nothing to check when it finds none.
+
 ## Correcting a posted brief
 
 Post a **new full comment** that starts with `## Implementation brief`, with a short note at the top saying what changed and why. The implementer takes the last one. Do not delete the old one; people read the history.
