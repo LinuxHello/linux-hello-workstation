@@ -146,10 +146,19 @@ PY
 log "issue #$num: $title"
 log "files: ${files[*]}"
 
-# 2. Branch.
+# A brief whose tests all exist on main already describes merged work: stop before anything is touched.
 git fetch -q origin main
+# shellcheck source=local/lh-brief.sh
+source "$HERE/lh-brief.sh"
+if lh_brief_already_implemented "$brief"; then
+  die "every test the brief names already exists on main: issue #$num looks implemented. Check: gh pr list --repo $REPO_SLUG --state merged --search \"$num\". If the brief changes those tests rather than adds them, run again with LH_ALLOW_EXISTING_TESTS=1."
+fi
+
+# 2. Branch.
 # shellcheck source=local/lh-branch.sh
 source "$HERE/lh-branch.sh"
+# shellcheck source=local/lh-status.sh
+source "$HERE/lh-status.sh"
 lh_select_branch "$LH_BRANCH" origin/main || die "not starting issue #$num on a stale branch"
 # A branch already ahead of main holds a finished run (it is committed and pushed only after the
 # gates pass). Stop before touching labels or files: re-running would find nothing to change and
@@ -162,9 +171,9 @@ for pin in "${pins[@]}"; do
     && git -C "$pin_path" checkout -q "$pin_sha" && git add -- "$pin_path" || die "could not bump $pin_path to $pin_sha"
   log "pin: $pin_path -> $pin_sha"
 done
-gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-progress --remove-label status:ready >/dev/null 2>&1 || true
+lh_set_status "$REPO_SLUG" "$num" in-progress
 fail() {
-  gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:ready --remove-label status:in-progress >/dev/null 2>&1 || true
+  lh_set_status "$REPO_SLUG" "$num" ready
   die "$* (issue #$num set back to status:ready; branch $LH_BRANCH kept with the model's edits for inspection)"
 }
 
@@ -372,6 +381,6 @@ Revert the squash commit.
 BODY
 )
 fi
-gh issue edit "$num" --repo "$REPO_SLUG" --add-label status:in-review --remove-label status:in-progress >/dev/null 2>&1 || true
+lh_set_status "$REPO_SLUG" "$num" in-review
 log "draft PR: $pr_url"
 log "next: the lead reviews it against the brief (status:in-review)"
