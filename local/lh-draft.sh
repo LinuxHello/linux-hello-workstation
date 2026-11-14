@@ -91,7 +91,9 @@ an API. Where the outline does not show what you need (a type, a function, how s
 recorded), write the instruction in terms of what the issue says, and put the exact thing, as one line,
 under a final heading '## To look up': a later pass will look each one up. Quote the invariants that
 apply.
-Answer with the brief only, in Markdown, starting with the line '## Implementation brief'."
+Answer with the brief only, in Markdown, starting with the line '## Implementation brief'.
+
+No tool exists in this session: do not call Read, Grep, Glob or any other tool. Everything you need is above. Write the brief now."
 else
   title=$2
   decision=$3; [[ ! -f "$decision" ]] || decision=$(<"$decision")
@@ -147,7 +149,14 @@ model_run() {
 # A brief's first pass has no tools: the outline in the prompt is what it has, and exploring with a
 # small window ran out of turns without an answer (2026-11-13). The refine rounds look things up.
 if [[ "$kind" == brief ]]; then
-  raw=$(model_run "$prompt" 3 none) || die "the model run failed (its output is above)"
+  # A local model sometimes calls Read or Glob although none is offered, spends its turns on "No such tool"
+  # and ends with "Reached max turns" (#135, 2026-11-14; the same prompt had worked an hour before).
+  # Ask once more, saying so, before giving up.
+  if ! raw=$(model_run "$prompt" 3 none); then
+    log "the first pass failed (a model that calls a tool that does not exist runs out of turns); asking once more"
+    raw=$(model_run "$prompt"$'\n\n'"Your previous attempt called a tool. No tool exists. Answer with the brief text only, starting with the line '## Implementation brief'." 3 none) \
+      || die "the model run failed twice (its output is above)"
+  fi
 else
   raw=$(model_run "$prompt") || die "the model run failed (its output is above)"
 fi
