@@ -46,3 +46,7 @@
 188	blocked	later	186	Split from #140: salted HMAC TPM sessions with parameter encryption
 189	needs-brief	next	-	Split from #140: clear PIN buffers, no Debug on secrets, no core dumps
 190	needs-brief	later	-	Split from #140: C4 model and arc42 for the PIN socket
+191	needs-brief	later	-	Split from #145: watchdog, pings from the bus loop and the AppArmor rule, in one change
+192	needs-brief	later	-	Split from #145: health call, linuxhello-ctl status, SIGTERM handling and error logging in main
+193	needs-brief	later	-	Split from #145: what a client does when the Agent name changes owner
+194	blocked	later	193	Split from #145: VM checks for Agent availability at login
