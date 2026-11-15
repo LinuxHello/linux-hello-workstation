@@ -165,10 +165,12 @@ files_of() { ( cd "$work" && lh_brief_files "$1" | tr '\n' ' ' ); }
 f_plain=$'## Implementation brief\n**Files:**\n- `crates/a/src/x.rs`: one\n- `docs/y.md`: two\n\n**Properties and tests first.**\n- `some_test_name_here`: a\n'
 f_head=$'## Implementation brief\n### 2. Files\n\n- `crates/a/src/x.rs`: one\n- Never edit `crates/other/z.yml`.\n\n### 3. Properties and tests first\n'
 f_paren=$'## Implementation brief\n\n**Files (at most three, all listed):**\n\n1. `crates/a/tests/p.rs` — the placeholders.\n2. `docs/security/properties.md` — two rows.\n3. `crates/a/src/audit.rs` — doc comments only.\n\n**Properties and tests first.**\n\n- `a_test_name_here`: x\n'
+f_unit=$'## Implementation brief\n### 2. Files\n\n- `security/systemd/a.service`: lines\n- `security/dbus/io.x.Agent1.service` (new): the activation file\n- `security/dbus/p.conf`: policy\n- `crates/a/tests/p.rs`: tests\n\n### 3. Properties and tests first\n'
 f_none=$'## Implementation brief\n**Goal.** Do it.\n'
 [[ "$(files_of "$f_plain")" == "crates/a/src/x.rs docs/y.md " ]] && ok files_after_a_plain_bold_key_are_found || nok files_after_a_plain_bold_key_are_found "got [$(files_of "$f_plain")]"
 [[ "$(files_of "$f_head")" == "crates/a/src/x.rs " ]] && ok files_under_a_heading_are_found_and_a_prose_mention_is_not || nok files_under_a_heading_are_found_and_a_prose_mention_is_not "got [$(files_of "$f_head")]"
 [[ "$(files_of "$f_paren")" == "crates/a/tests/p.rs docs/security/properties.md crates/a/src/audit.rs " ]] && ok files_after_a_bold_key_with_words_and_a_numbered_list_are_found || nok files_after_a_bold_key_with_words_and_a_numbered_list_are_found "got [$(files_of "$f_paren")]"
+[[ "$(files_of "$f_unit")" == "security/systemd/a.service security/dbus/io.x.Agent1.service security/dbus/p.conf crates/a/tests/p.rs " ]] && ok unit_activation_and_conf_files_are_found_as_editable_files || nok unit_activation_and_conf_files_are_found_as_editable_files "got [$(files_of "$f_unit")]"
 [[ -z "$(files_of "$f_none")" ]] && ok a_brief_without_a_files_section_has_no_files || nok a_brief_without_a_files_section_has_no_files "got [$(files_of "$f_none")]"
 
 # lh_brief_already_implemented: true only when every test the brief names is already on main and none of
