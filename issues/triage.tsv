@@ -35,17 +35,17 @@
 175	blocked	later	177	Split from #139: confined presence prompt that shows the relying-party id
 176	needs-brief	later	-	Split from #139: one prompt and one signature per ceremony
 177	needs-brief	next	-	Spike: what authenticates the presence prompt when it runs in the user session (ADR-0020 point 6); #175 waits on it
-180	needs-brief	later	-	Split from #137: save the PIN lockout records to a file and read them at start-up
+180	in-review	later	-	Split from #137: save the PIN lockout records to a file and read them at start-up
 181	blocked	later	172	Split from #137: map lockout_attempts and lockout_minutes to PinLock
 182	blocked	later	180,181,186	Split from #137: call the counter in the PIN path; waits on the PIN socket (#186)
 183	blocked	later	182	Split from #137: swtpm test of P-14 and agent_never_changes_tpm_lockout_parameters
 184	blocked	later	182	Split from #137: VM check, N wrong PINs for user A leave user B working
-185	needs-brief	later	-	Split from #137: drop "TPM dictionary-attack parameters" from the schema docs and section 8
+185	in-review	later	-	Split from #137: drop "TPM dictionary-attack parameters" from the schema docs and section 8
 186	needs-brief	next	-	Split from #140: the Agent PIN socket checked with SO_PEERCRED (ADR-0021)
 187	blocked	later	186	Split from #140: stretch the PIN with a per-user salt
 188	blocked	later	186	Split from #140: salted HMAC TPM sessions with parameter encryption
-189	needs-brief	next	-	Split from #140: clear PIN buffers, no Debug on secrets, no core dumps
-190	needs-brief	later	-	Split from #140: C4 model and arc42 for the PIN socket
+189	in-review	next	-	Split from #140: clear PIN buffers, no Debug on secrets, no core dumps
+190	in-review	later	-	Split from #140: C4 model and arc42 for the PIN socket
 191	needs-brief	later	-	Split from #145: watchdog, pings from the bus loop and the AppArmor rule, in one change
 192	needs-brief	later	-	Split from #145: health call, linuxhello-ctl status, SIGTERM handling and error logging in main
 193	needs-brief	later	-	Split from #145: what a client does when the Agent name changes owner
@@ -54,11 +54,11 @@
 196	blocked	later	195	Split from #147: pam_linuxhello as a thin synchronous client with a hard deadline
 197	needs-brief	next	-	Split from #147: shipped PAM snippets keep pam_unix after pam_linuxhello
 198	blocked	later	196,197	Split from #147: VM runs of the PAM module in login, unlock, sudo and console
-199	needs-brief	later	-	Split from #147: C4 model and arc42 for the PAM module and orchestrator
-201	needs-brief	next	-	Split from #144: use open_named and drop a leaving peer on NameOwnerChanged, with the AppArmor receive rule
-202	needs-brief	later	-	Split from #144: prompts expire after a maximum lifetime without a report
+199	in-review	later	-	Split from #147: C4 model and arc42 for the PAM module and orchestrator
+201	in-review	next	-	Split from #144: use open_named and drop a leaving peer on NameOwnerChanged, with the AppArmor receive rule
+202	in-review	later	-	Split from #144: prompts expire after a maximum lifetime without a report
 203	needs-brief	later	-	Split from #144: Unsubscribe and a Closed notification
-204	needs-brief	next	-	Split from #144: the same opener may reopen its own prompt id
+204	in-review	next	-	Split from #144: the same opener may reopen its own prompt id
 205	blocked	later	201	Split from #144: bus test that kills the opener
 207	blocked	later	196	Budget check: prompt indicator within 200 ms of PAM start (#152)
 208	blocked	later	195	Budget check: fingerprint unlock within 1 s (#152)
@@ -69,4 +69,4 @@
 214	needs-brief	next	-	ADR: GetStatus interface (split from #155); the maintainer decides
 215	blocked	later	155,180	tpm-locked condition (split from #155)
 216	blocked	later	155	doctor probes of the outside world (split from #155)
-155	ready	next	-	Offline status and doctor, slice 1 (brief posted 2026-11-15)
+148	in-review	later	-	Stale documents after ADR-0005, ADR-0014 and ADR-0023: linux-hello PR and architecture PR open
