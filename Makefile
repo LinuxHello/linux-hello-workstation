@@ -13,7 +13,7 @@ export ARCH_REPO_DIR ?= $(HOME)/projects/$(ORG)/architecture
 BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 
 .DEFAULT_GOAL := help
-.PHONY: help next backlog backlog-check triage board labels signoff \
+.PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
         vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
@@ -25,6 +25,7 @@ help:
 	@echo "  make backlog-check        open issues missing a status: or priority: label"
 	@echo "  make triage [APPLY=1]     apply issues/triage.tsv: labels and blocked-by links (dry run without APPLY=1)"
 	@echo "  make board                mirror the issues onto the Roadmap project board"
+	@echo "  make map                  write docs/dependency-map.md: which open issues wait for which (Mermaid)"
 	@echo "  make signoff PR=<n> [REPO=<repo>]   certify a reviewed PR's commits with your DCO sign-off (default: $(REPO))"
 	@echo
 	@echo "Implementer on this workstation (attended)"
@@ -82,6 +83,7 @@ backlog: $(BACKLOG) ; @bash $(BACKLOG) list
 backlog-check: $(BACKLOG) ; @bash $(BACKLOG) check
 triage: ; @bash scripts/triage.sh
 board: $(BACKLOG) ; @bash scripts/board.sh
+map: ; @bash scripts/map.sh
 signoff:
 	@test -n "$(PR)" || { echo "usage: make signoff PR=<number>"; exit 1; }
 	@bash scripts/dco-signoff.sh $(PR)
@@ -189,6 +191,7 @@ test:
 	bash local/test-lh-brief.sh
 	bash local/test-lh-status.sh
 	bash local/test-lh-prompts.sh
+	bash local/test-map.sh
 	bash local/test-lh-guard.sh
 	bash local/test-lh-nothink-relay.sh
 	bash local/test-lh-model.sh
