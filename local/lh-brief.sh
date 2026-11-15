@@ -133,7 +133,7 @@ text = sys.argv[1]
 m = re.search(r"(?:\*\*Files\b[^*\n]*\*\*|^#{2,}[ \t]*(?:\d+\.[ \t]*)?Files[ \t]*$)(.*?)(?=^#{1,6}[ \t]|\n\*\*[A-Z]|\Z)", text, re.S | re.M)
 seen = []
 section = m.group(1) if m else ""
-ext = r"`([A-Za-z0-9_./-]+\.(?:rs|toml|md|txt|yml|yaml|json|sh))`"
+ext = r"`([A-Za-z0-9_./-]+\.(?:rs|toml|md|txt|yml|yaml|json|sh|service|socket|conf|py))`"
 found = [mm.group(1) for line in section.splitlines() if (mm := re.match(r"\s*(?:[-*]|\d+\.)\s+" + ext, line))]
 if not found:
     found = re.findall(ext, section)
