@@ -28,6 +28,7 @@ case "$1 $2" in
   "issue view")
     n=$3
     case "$*" in
+      *"--json body,labels"*) cat "$FIX/body-$n" 2>/dev/null || printf 'type:bug\nA plain body.\n' ;;
       *"--json comments"*) cat "$FIX/briefs-$n" 2>/dev/null || echo 0 ;;
       *"--json title,body"*) printf '# Title of %s\n\nThe body of the issue.\n' "$n" ;;
       *) echo "unexpected gh $*" >&2; exit 1 ;;
@@ -100,6 +101,17 @@ check "a_blocked_issue_and_a_spike_are_never_picked" "$(! grep -qE 'draft brief 
 check "a_clean_brief_is_published_with_the_documented_command" "$(grep -q "issue comment 146 --repo LinuxHello/linux-hello --body-file $work/drafts/brief-146.md" "$FIX/gh.log"; echo $?)"
 check "a_published_issue_is_set_to_ready" "$(grep -q 'issue edit 146 --repo LinuxHello/linux-hello --add-label status:ready' "$FIX/gh.log"; echo $?)"
 check "the_result_says_it_was_published" "$(grep -qi 'published' <<<"$out" && ! grep -qi 'NOT PUBLISHED' <<<"$out"; echo $?)"
+
+new_case skips_architecture
+printf 'type:security\n**Problem.** x\n\n**Proposed change (ADR before the verifier is briefed).**\n1. y\n' > "$FIX/body-146"
+run
+check "an_issue_whose_work_is_an_adr_is_skipped_when_picking" "$([[ $status -eq 0 ]] && grep -q 'draft brief 147' "$FIX/draft.log" && ! grep -q 'draft brief 146' "$FIX/draft.log" && grep -q '#146 skipped' <<<"$out" && grep -qi 'architecture' <<<"$out"; echo $?)"
+printf 'type:spike\nplain\n' > "$FIX/body-146"; : > "$FIX/draft.log"
+run
+check "an_issue_labelled_as_a_spike_is_skipped_when_picking" "$(! grep -q 'draft brief 146' "$FIX/draft.log"; echo $?)"
+printf 'type:security\nrelates to ADR-0017 and spike 0094\n' > "$FIX/body-146"; : > "$FIX/draft.log"
+run
+check "an_issue_that_only_mentions_an_adr_is_still_picked" "$(grep -q 'draft brief 146' "$FIX/draft.log"; echo $?)"
 
 new_case explicit
 run LH_ISSUE=147

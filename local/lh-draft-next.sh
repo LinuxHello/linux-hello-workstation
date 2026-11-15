@@ -55,12 +55,24 @@ has_brief() { # <n>: does the issue have a comment that starts with the brief he
   [[ "${c:-0}" -gt 0 ]]
 }
 
+is_architecture() { # <n>: is its work an ADR or a spike in the architecture repository, not code in this one?
+  local text labels body
+  text=$(gh issue view "$1" --repo "$REPO_SLUG" --json body,labels \
+           --jq '(.labels | map(.name) | join(",")) + "\n" + .body') || return 1
+  labels=${text%%$'\n'*}; body=${text#*$'\n'}
+  [[ ",$labels," == *,type:spike,* ]] && return 0
+  # The issue text asks for an ADR before code: "Proposed change (ADR before ...)" or an acceptance of "An accepted ADR".
+  grep -Eiq 'proposed change \(ADR|^\*\*Acceptance\.\*\* +(An )?accepted ADR' <<<"$body"
+}
+
 pick() { # the first issue of the brief lane that can be drafted
   local data n t
   data=$(REPO_SLUG="$REPO_SLUG" bash "$LH_BACKLOG" json) || die "the backlog could not be read"
   while IFS=$'\t' read -r n t; do
     if [[ "$t" =~ ^ADR([^A-Za-z]|$) ]]; then
       printf '  #%s skipped: "%s" is a decision for you (an ADR), not a brief\n' "$n" "$t" >&2
+    elif is_architecture "$n"; then
+      printf '  #%s skipped: "%s" is an ADR or a spike for the lead and you (the architecture repository), not a brief\n' "$n" "$t" >&2
     elif has_brief "$n"; then
       printf '  #%s skipped: it already has a brief; set it to ready if it is the one to implement\n' "$n" >&2
     else
