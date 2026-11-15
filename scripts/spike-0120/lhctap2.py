@@ -23,7 +23,7 @@ What is added to spike 0094 (lhctap.py):
     stored response; nothing is prompted or signed twice.
   * Keepalives while it waits, "channel busy" for other channels, structured events in events.jsonl.
 """
-import base64, hashlib, hmac, json, os, select, socket, struct, subprocess, sys, tempfile, time
+import base64, hashlib, hmac, json, os, pwd, select, socket, struct, subprocess, sys, tempfile, time
 
 import cbor2
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
@@ -165,7 +165,9 @@ class Agent:
         os.chmod(RUN, 0o755)
         self.sensor = self.bind(f"{RUN}/sensor", 0o600, socket.SOCK_DGRAM)    # root only: nobody in the session can write it
         self.ctl = self.bind(f"{RUN}/ctl", 0o600, socket.SOCK_DGRAM)
-        self.ps = self.bind(f"{RUN}/prompt.sock", 0o666, socket.SOCK_STREAM)   # the prompt (user lh) must connect
+        self.ps = self.bind(f"{RUN}/prompt.sock", 0o600, socket.SOCK_STREAM)   # only the prompt's user may connect
+        pw = pwd.getpwnam(PROMPT_USER)
+        os.chown(f"{RUN}/prompt.sock", pw.pw_uid, pw.pw_gid)
         self.ps.listen(8)
 
     def bind(self, path, mode, kind):
