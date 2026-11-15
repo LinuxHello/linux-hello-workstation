@@ -14,6 +14,7 @@ Every task is a `make` target; `make help` lists them. This page says **when** t
 | Certify a pull request I reviewed | `make signoff PR=<n>` (another repository: `make signoff PR=<n> REPO=architecture`), then merge on GitHub | Rewrites the PR branch with your sign-off; refuses a clone that is not that repository's |
 | Code with Claude locally, unbilled | `make claude-gpu` (fast) or `make claude-cpu` (128k window, slow) | No |
 | Run the implementer on one issue | `make implement ISSUE=<n>` (`HARNESS=claude` for Claude Code) | Branch, draft PR, labels |
+| Draft the next brief, have Claude check it, and publish it if it is clean | `make draft-next-brief` (`ISSUE=<n>`, `DRY=1`) | A comment on the issue and its status label, only when the check finds nothing wrong |
 | Have a local model draft a brief or an ADR (written to a file, never posted) | `make draft-brief ISSUE=<n>`, `make draft-adr TITLE=... DECISION=...` | `~/.cache/linux-hello-drafts/` |
 | Update the agents' shared memory, or ask it something | `make memory-index`, `make memory-query Q='...'` (`TIER=private` to include your notes) | The memory database only |
 | See or free the GPU | `make models`, `make models-unload` | Unloads models |

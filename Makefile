@@ -15,7 +15,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid image-check image-mirror implement implement-next draft-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -33,6 +33,7 @@ help:
 	@echo "  make implement ISSUE=<n> [HARNESS=aider|claude]   implement one issue from its brief"
 	@echo "  make implement-next       one tick of the unattended loop, by hand"
 	@echo "  make draft-brief ISSUE=n  a local model drafts the brief into a file (never posts)"
+	@echo "  make draft-next-brief [ISSUE=n] [DRY=1]   draft the next brief, have Claude check it, publish it only if it is clean"
 	@echo "  make draft-adr TITLE=.. DECISION=..  a local model drafts an ADR into a file"
 	@echo "  make models               models loaded now;  make models-unload frees the GPU"
 	@echo
@@ -94,6 +95,8 @@ implement-next: ; @bash local/lh-implement-next.sh
 draft-brief:
 	@test -n "$(ISSUE)" || { echo "usage: make draft-brief ISSUE=<number>"; exit 1; }
 	@bash local/lh-draft.sh brief $(ISSUE)
+draft-next-brief:
+	@LH_ISSUE="$(ISSUE)" LH_DRY="$${DRY:-0}" bash local/lh-draft-next.sh
 draft-adr:
 	@test -n "$(TITLE)" -a -n "$(DECISION)" || { echo "usage: make draft-adr TITLE='...' DECISION='text or file'"; exit 1; }
 	@bash local/lh-draft.sh adr "$(TITLE)" "$(DECISION)"
@@ -188,6 +191,7 @@ test:
 	bash local/test-lh-nothink-relay.sh
 	bash local/test-lh-model.sh
 	bash local/test-lh-draft.sh
+	bash local/test-lh-draft-next.sh
 	bash local/test-lh-memory.sh
 	bash scripts/test-triage.sh
 	bash scripts/test-next.sh

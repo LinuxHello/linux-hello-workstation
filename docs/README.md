@@ -9,7 +9,7 @@ Run every command from this repository's root, on the workstation, unless a step
 | Step | Guide | You do this when |
 | :-- | :-- | :-- |
 | 1 | [Pick the next task](01-pick-the-next-task.md) | You sit down and ask "what now?" |
-| 2 | [Draft a brief](02-draft-a-brief.md) | `make next` shows an issue in the **brief** lane |
+| 2 | [Draft a brief](02-draft-a-brief.md) | `make next` shows an issue in the **brief** lane; `make draft-next-brief` does it for you |
 | 3 | [Implement an issue](03-implement-an-issue.md) | An issue has a posted brief |
 | 4 | [When a run fails](04-when-a-run-fails.md) | `make implement` ended with an error |
 | 5 | [Review, sign off and merge](05-review-sign-off-and-merge.md) | A pull request is waiting, or CI is red |
