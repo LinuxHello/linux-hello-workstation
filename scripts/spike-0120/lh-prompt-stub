@@ -1,0 +1,56 @@
+#!/usr/bin/python3 -I
+"""Spike #120 stub of the Prompt UI. Connects to the Agent's socket, shows the relying-party id it is told
+(never client-supplied text) and returns one decision. Modes: click (an Allow button), pin (an entry),
+sensor (display only: there is nothing to click, the Agent waits for the sensor). Not production code."""
+import ctypes, json, os, socket, sys, tkinter as tk
+
+if os.environ.get("LH_PROMPT_DUMPABLE") != "1":      # (the knob exists only so the test can switch this layer off and test the others)
+    ctypes.CDLL(None).prctl(4, 0, 0, 0, 0)           # PR_SET_DUMPABLE = 0: not readable or traceable through /proc or ptrace
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect(os.environ["LH_PROMPT_SOCK"])
+req = json.loads(sock.makefile().readline())
+rp = "".join(ch for ch in str(req["rp"])[:80] if ch.isprintable())
+mode = req["mode"]
+choices = ["".join(ch for ch in str(c)[:60] if ch.isprintable()) for c in req.get("choices", [])]
+
+root = tk.Tk()
+root.title("Linux Hello prompt")
+root.geometry(f"380x{170 + 34 * len(choices)}+100+100")   # fixed place so a test can click on it
+root.attributes("-topmost", True)
+tk.Label(root, text=f"Sign in to\n{rp}", font=("Sans", 12)).pack(pady=8)
+
+def answer(obj):
+    sock.sendall((json.dumps(obj) + "\n").encode())
+    if "choice" in obj and mode != "click":           # the decision (sensor, PIN) is still to come: keep the window
+        return
+    root.after(100, root.destroy)
+
+if choices:                                           # which credential or provider: a choice, not an authorisation
+    for i, c in enumerate(choices):
+        tk.Button(root, text=c, width=32, command=lambda i=i: answer({"choice": i, "allow": mode == "click"})).place(x=40, y=60 + 34 * i)
+    base = 60 + 34 * len(choices)
+else:
+    base = 0
+if mode == "click" and not choices:
+    tk.Button(root, text="Allow", width=12, command=lambda: answer({"allow": True})).place(x=60, y=100)
+    tk.Button(root, text="Deny", width=12, command=lambda: answer({"allow": False})).place(x=210, y=100)
+elif mode == "pin":
+    e = tk.Entry(root, show="*", width=20)
+    e.place(x=100, y=80); e.focus_set()
+    e.bind("<Return>", lambda _: answer({"pin": e.get()}))
+    tk.Button(root, text="OK", width=8, command=lambda: answer({"pin": e.get()})).place(x=140, y=115)
+elif mode == "sensor":
+    tk.Label(root, text="Touch the fingerprint sensor").pack()
+
+def poll():                                           # the Agent can close the prompt (decision made elsewhere)
+    sock.setblocking(False)
+    try:
+        if b"close" in sock.recv(256):
+            root.destroy(); return
+    except BlockingIOError:
+        pass
+    except OSError:
+        root.destroy(); return
+    root.after(100, poll)
+root.after(100, poll)
+root.mainloop()

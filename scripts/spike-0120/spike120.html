@@ -1,0 +1,34 @@
+<!doctype html><meta charset=utf-8><title>Linux Hello spike 120</title>
+<button id=create>create</button> <button id=get>get</button> <pre id=out>idle</pre>
+<script>
+// Options come from the query string: rk, uv (create) and allow=0|1, guv (get).
+const q = new URLSearchParams(location.search);
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+const flags = ad => { const f = new Uint8Array(ad)[32]; return 'UP=' + (f & 1) + ' UV=' + ((f >> 2) & 1); };
+let cred = JSON.parse(sessionStorage.getItem('cred') || 'null');
+create.onclick = async () => { try {
+  out.textContent = 'CREATE pending';
+  const c = await navigator.credentials.create({publicKey: {
+    challenge: crypto.getRandomValues(new Uint8Array(32)), rp: {name: 'Spike', id: 'localhost'},
+    user: {id: new Uint8Array([1, 2, 3, q.get('user') ? Number(q.get('user')) : 4]), name: 'alice' + (q.get('user') || ''), displayName: 'Alice'},
+    pubKeyCredParams: [{type: 'public-key', alg: -7}],
+    authenticatorSelection: {userVerification: q.get('uv') || 'discouraged', residentKey: q.get('rk') || 'discouraged', requireResidentKey: q.get('rk') === 'required'},
+    attestation: 'none', timeout: 60000}});
+  cred = {id: hex(c.rawId)}; sessionStorage.setItem('cred', JSON.stringify(cred));
+  out.textContent = 'CREATE OK ' + flags(c.response.getAuthenticatorData()) + ' idlen=' + c.rawId.byteLength + ' attachment=' + c.authenticatorAttachment;
+} catch (e) { out.textContent = 'CREATE ERR ' + e.name + ': ' + e.message; } };
+get.onclick = async () => { try {
+  out.textContent = 'GET pending';
+  const pk = {challenge: crypto.getRandomValues(new Uint8Array(32)), rpId: 'localhost', userVerification: q.get('guv') || 'discouraged', timeout: 60000};
+  if (q.get('allow') !== '0') pk.allowCredentials = [{type: 'public-key', id: Uint8Array.from(cred.id.match(/../g).map(h => parseInt(h, 16)))}];
+  const a = await navigator.credentials.get({publicKey: pk});
+  out.textContent = 'GET OK ' + flags(a.response.authenticatorData) + ' sig=' + a.response.signature.byteLength + ' user=' + (a.response.userHandle ? hex(a.response.userHandle) : 'none');
+} catch (e) { out.textContent = 'GET ERR ' + e.name + ': ' + e.message; } };
+// ?auto=create,get runs the steps in order on load and mirrors the result into the window title, so a browser
+// that cannot be driven (a Snap or a stable build) is read through its window title.
+new MutationObserver(() => { document.title = 'LH120 ' + out.textContent; }).observe(out, {childList: true, characterData: true, subtree: true});
+(async () => { for (const s of (q.get('auto') || '').split(',').filter(Boolean)) { document.getElementById(s).click();
+  while (!/^(CREATE|GET) (OK|ERR)/.test(out.textContent)) await new Promise(r => setTimeout(r, 200));
+  if (/ERR/.test(out.textContent)) break; if (s === 'create') await new Promise(r => setTimeout(r, 500)); out.dataset.prev = out.textContent;
+  if ((q.get('auto') || '').split(',').pop() !== s) { await new Promise(r => setTimeout(r, 300)); out.textContent = 'idle'; } } })();
+</script>

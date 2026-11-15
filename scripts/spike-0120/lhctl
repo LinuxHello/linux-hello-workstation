@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Control the prototype Agent (root only): lhctl mode click|pin|sensor|none; window N; silent sign|refuse;
+   dedupe 0|1; unlock (a verification event, as a session unlock would be); forget."""
+import socket, sys
+s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+s.sendto(" ".join(sys.argv[1:]).encode(), "/run/lhctap2/ctl")

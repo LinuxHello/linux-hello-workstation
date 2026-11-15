@@ -15,7 +15,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -61,6 +61,7 @@ help:
 	@echo "  make vm-test-pam vm-test-rpbind vm-test-uhid          spike 0007 at runtime: which bus a process reaches from inside sudo and a root PAM caller"
 	@echo "  make vm-test-rpbind       spike 119: a credential key bound to its relying party inside the TPM"
 	@echo "  make vm-test-uhid         spike 121: the uhid helper under a profile, and what a compromised one can do"
+	@echo "  make vm-test-uvup         spike 120: resident keys, presence and user verification in the virtual CTAP authenticator, browsers, and a same-user process against the prompt"
 	@echo
 	@echo "Architecture repository: the pinned Structurizr image (needs the architecture checkout at $(ARCH_REPO_DIR))"
 	@echo "  make image-check [ENGINE=podman|docker]   pull the pinned image from the org's registry, else Docker Hub, and say which"
@@ -166,6 +167,7 @@ vm-test-agent: ; @bash scripts/vm-test-agent.sh
 vm-test-pam: ; @bash scripts/vm-test-pam.sh
 vm-test-rpbind: ; @bash scripts/vm-test-rpbind.sh
 vm-test-uhid: ; @bash scripts/vm-test-uhid.sh
+vm-test-uvup: ; @bash scripts/vm-test-uvup.sh
 vm-test-agent-all:
 	@for r in $(VM_RELEASES); do echo "==> Ubuntu $$r"; $(MAKE) --no-print-directory vm-up vm-test-agent VM_RELEASE=$$r || exit 1; done
 

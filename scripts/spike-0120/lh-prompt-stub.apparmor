@@ -1,0 +1,35 @@
+abi <abi/4.0>,
+include <tunables/global>
+
+# Spike #120: the confined stub Prompt UI. It may talk to the Agent's prompt socket and to the X server,
+# read what Python and Tk need, and nothing else. No one else may trace it, read its memory or signal it.
+profile lh-prompt-stub /usr/local/libexec/linuxhello/lh-prompt-stub flags=(attach_disconnected) {
+  include <abstractions/base>
+  include <abstractions/python>
+  include <abstractions/X>
+  include <abstractions/fonts>
+
+  /usr/local/libexec/linuxhello/lh-prompt-stub r,
+  /usr/bin/python3.12 mr,
+  /usr/lib/python3*/** r,
+  /usr/lib/python3/** r,
+  /usr/share/tcltk/** r,
+  /usr/share/tcl*/** r,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /etc/X11/** r,
+  /etc/passwd r,
+  /etc/nsswitch.conf r,
+  /run/lhctap2/prompt.sock rw,
+  unix (connect, send, receive) type=stream,
+
+  deny network inet,
+  deny network inet6,
+  deny capability,
+  deny /home/** rwklx,
+  deny /root/** rwklx,
+  deny /dev/tpm* rw,
+
+  # nobody traces, reads or signals this process; it traces no one
+  deny ptrace (readby, tracedby, trace, read),
+  deny signal (receive) peer=unconfined,
+}
