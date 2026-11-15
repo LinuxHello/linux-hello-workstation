@@ -35,3 +35,9 @@
 175	blocked	later	177	Split from #139: confined presence prompt that shows the relying-party id
 176	needs-brief	later	-	Split from #139: one prompt and one signature per ceremony
 177	needs-brief	next	-	Spike: what authenticates the presence prompt when it runs in the user session (ADR-0020 point 6); #175 waits on it
+180	needs-brief	later	-	Split from #137: save the PIN lockout records to a file and read them at start-up
+181	blocked	later	172	Split from #137: map lockout_attempts and lockout_minutes to PinLock
+182	blocked	later	180,181	Split from #137: call the counter in the PIN path; also waits on the ADR-0021 PIN socket (no issue yet)
+183	blocked	later	182	Split from #137: swtpm test of P-14 and agent_never_changes_tpm_lockout_parameters
+184	blocked	later	182	Split from #137: VM check, N wrong PINs for user A leave user B working
+185	needs-brief	later	-	Split from #137: drop "TPM dictionary-attack parameters" from the schema docs and section 8
