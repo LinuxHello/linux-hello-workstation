@@ -29,3 +29,4 @@
 131	needs-brief	next	136,147	Umbrella: items 1, 3a and 4 are done (#159, #161, #132); item 2 waits for the unlock-state ADR (#136), item 3b for #147
 132	ready	next	-	Brief posted for P-13 and P-27 (enable the two placeholders for the events that exist). Left after that: the PIN-only event, the later events (unlock, signature, PIN change, reset) and LH_PEER wait on components that do not exist
 171	needs-brief	later	-	Split from #132: Caller carries the bus name and the audit record gets LH_PEER; nothing blocks it
+172	needs-brief	next	-	Split from #132: the Agent does not call policy::load yet; load the policy, answer from it and audit the PIN-only fallback; #151 (cache) waits on it
