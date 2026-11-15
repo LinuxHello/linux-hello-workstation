@@ -21,11 +21,11 @@ The lead (a Claude session) opens pull requests and reviews them. It never adds 
 
 3. If something is wrong, **get it fixed before you sign off.** Sign-off rewrites the branch (next step); any commit pushed on top of the old branch is then rejected as a non-fast-forward.
 
-4. Sign off:
+4. Sign off, in the repositories that require it. **`linux-hello` and `architecture` have a `dco` check; `linux-hello-workstation` does not**, so a workstation pull request needs no sign-off: read it and merge it (skip to step 6).
 
    ```sh
    make signoff PR=<n>                                  # the project repository
-   make signoff PR=<n> REPO=linux-hello-workstation     # another repository (also: architecture)
+   make signoff PR=<n> REPO=architecture                # the architecture repository
    ```
 
    The script lists every commit of the pull request that lacks a `Signed-off-by:` line and asks for an explicit `yes`. It then rebases the branch onto its base (`main`) with `--signoff`, re-signing with your local key, and force-pushes with a lease. It works in a temporary worktree, so your clone is untouched. It refuses to run when the clone's `origin` is not that repository.
@@ -56,7 +56,7 @@ If the pull request did not close its issue ("Closes #n" was missing), close it 
 
 ### `dco`
 
-Your sign-off is missing on one or more commits. Run `make signoff PR=<n>` again; it lists the commits that lack it before it changes anything.
+Your sign-off is missing on one or more commits (this check exists in `linux-hello` and `architecture`, not in `linux-hello-workstation`). Run `make signoff PR=<n>` again; it lists the commits that lack it before it changes anything.
 
 ### `SonarCloud Code Analysis`
 
@@ -97,4 +97,4 @@ git rebase --onto origin/<branch> <the last commit of your old branch>
 git push origin <branch>
 ```
 
-Then run `make signoff PR=<n>` again, because the new commit has no sign-off.
+Then run `make signoff PR=<n>` again, because the new commit has no sign-off (only in a repository with a `dco` check).
