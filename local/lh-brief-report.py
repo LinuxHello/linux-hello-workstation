@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """Renders the outcome of `make draft-next-brief` as a short report for a reader who is not a specialist.
 
-    lh-brief-report.py <report file>      the outcome as JSON on stdin
+    lh-brief-report.py              the outcome as JSON on stdin; the report on stdout
 
 The JSON has: issue, title, outcome ("published", "dry_run" or "not_published"), reasons (why a guard
 stopped it), verdict (the evaluator's normalised verdict, or null), details (the mechanical checks'
-raw findings). The report goes to stdout and to <report file>. Decisions the maintainer must take
-come first, each with its options and a recommendation; what the lead fixes without asking comes
-next; the technical details go last. Tested by test-lh-draft-next.sh.
+raw findings). Decisions the maintainer must take come first, each with its options and a
+recommendation; what the lead fixes comes next; the technical details go last. The script opens no
+file: the caller saves the report (lh-draft-next.sh uses tee). Tested by test-lh-draft-next.sh.
 """
 import json
 import sys
 
 
 def main():
-    path = sys.argv[1]
     data = json.load(sys.stdin)
     verdict = data.get("verdict") or {}
     problems = verdict.get("problems") or []
@@ -69,10 +68,7 @@ def main():
         lines += ["", "Technical details (only if you want them)"]
         lines += [f"  {line}" for line in data["details"].strip().splitlines()]
 
-    report = "\n".join(lines) + "\n"
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(report)
-    sys.stdout.write(report)
+    sys.stdout.write("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":

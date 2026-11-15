@@ -144,5 +144,5 @@ reasons_json=$(printf '%s\n' "${reasons[@]:-}" | jq -R . | jq -s 'map(select(len
 jq -n --argjson n "$n" --arg title "$title" --arg outcome "$outcome" --argjson reasons "$reasons_json" \
       --argjson verdict "${verdict:-null}" --arg details "$details" \
       '{issue: $n, title: $title, outcome: $outcome, reasons: $reasons, verdict: $verdict, details: $details}' \
-  | python3 "$HERE/lh-brief-report.py" "$LH_DRAFT_DIR/report-$n.md"
+  | python3 "$HERE/lh-brief-report.py" | tee "$LH_DRAFT_DIR/report-$n.md"
 [[ "$outcome" == published || "$outcome" == dry_run ]]  || exit 2
