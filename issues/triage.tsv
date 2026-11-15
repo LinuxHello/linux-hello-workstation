@@ -65,3 +65,8 @@
 209	blocked	later	195	Budget check: face unlock within 2 s (#152)
 210	blocked	later	188	Budget check: passkey assertion within 700 ms on a hardware TPM (#152)
 211	blocked	later	195	Budget check: missing fprintd or Howdy leaves no delay before the PIN prompt (#152)
+213	blocked	next	155,214	Status on the login and lock screens (split from #155)
+214	needs-brief	next	-	ADR: GetStatus interface (split from #155); the maintainer decides
+215	blocked	later	155,180	tpm-locked condition (split from #155)
+216	blocked	later	155	doctor probes of the outside world (split from #155)
+155	ready	next	-	Offline status and doctor, slice 1 (brief posted 2026-11-15)
