@@ -26,7 +26,7 @@
 15	needs-brief	later	-	Its Mermaid dependency map is replaced by blocked-by links; rescope to the spike notes or close
 18	needs-brief	later	-	Deferred until the crates hold real code
 21	in-review	later	-	Maintainer: the tooling is now the private linux-hello-workstation repo (invariant 8); close as superseded?
-131	needs-brief	next	136,147	Umbrella: items 1, 3a and 4 are done (#159, #161, #132); item 2 waits for the unlock-state ADR (#136), item 3b for #147
+131	needs-brief	next	136	Umbrella: items 1, 3a and 4 are done (#159, #161, #132); item 2 waits for the unlock-state ADR (#136); item 3b is decided by ADR-0023 and follows in #196 and #197
 132	ready	next	-	Brief posted for P-13 and P-27 (enable the two placeholders for the events that exist). Left after that: the PIN-only event, the later events (unlock, signature, PIN change, reset) and LH_PEER wait on components that do not exist
 171	needs-brief	later	-	Split from #132: Caller carries the bus name and the audit record gets LH_PEER; nothing blocks it
 172	needs-brief	next	-	Split from #132: the Agent does not call policy::load yet; load the policy, answer from it and audit the PIN-only fallback; #151 (cache) waits on it
@@ -50,3 +50,8 @@
 192	needs-brief	later	-	Split from #145: health call, linuxhello-ctl status, SIGTERM handling and error logging in main
 193	needs-brief	later	-	Split from #145: what a client does when the Agent name changes owner
 194	blocked	later	193	Split from #145: VM checks for Agent availability at login
+195	needs-brief	next	-	Split from #147: the Agent runs face, fingerprint and PIN, first success wins (ADR-0023)
+196	blocked	later	195	Split from #147: pam_linuxhello as a thin synchronous client with a hard deadline
+197	needs-brief	next	-	Split from #147: shipped PAM snippets keep pam_unix after pam_linuxhello
+198	blocked	later	196,197	Split from #147: VM runs of the PAM module in login, unlock, sudo and console
+199	needs-brief	later	-	Split from #147: C4 model and arc42 for the PAM module and orchestrator
