@@ -56,7 +56,7 @@ make_repo() {
     git config "url.$work/$name.git.insteadOf" "$url"
   )
 }
-make_repo arch "git@github.com:LinuxHello/architecture.git"
+make_repo arch "git@github.com:LinuxHello/linux-hello-architecture.git"
 make_repo lh "https://github.com/LinuxHello/linux-hello.git"
 
 run() { # stdin answer, then the script's arguments; the environment is the caller's
@@ -68,17 +68,17 @@ head_msg() { git -C "$1" log -1 --format=%B "origin/feature"; }
 
 # 1. Another repository, named by its short name, with the default clone location.
 mkdir -p "$work/home/projects/LinuxHello"
-ln -s "$work/clone-arch" "$work/home/projects/LinuxHello/architecture"
+ln -s "$work/clone-arch" "$work/home/projects/LinuxHello/linux-hello-architecture"
 ln -s "$work/clone-lh" "$work/home/projects/LinuxHello/linux-hello"
-run yes 7 architecture
-if [[ $status == 0 ]] && grep -q 'gh pr view 7 --repo LinuxHello/architecture' "$work/calls" \
+run yes 7 linux-hello-architecture
+if [[ $status == 0 ]] && grep -q 'gh pr view 7 --repo LinuxHello/linux-hello-architecture' "$work/calls" \
    && git -C "$work/arch.git" log -1 --format=%B feature | grep -q '^Signed-off-by: Dev <dev@example.com>$' \
    && [[ "$(git -C "$work/arch.git" cat-file -p feature | grep -c '^gpgsig')" == 1 ]]
 then ok "signs off a PR in another repository, queried by that repository's name and re-signed"; else nok "signs off a PR in another repository" "status $status: $out"; fi
 
 # 2. The same through owner/repo, and a repo whose commits are already signed off is left alone.
-run yes 7 LinuxHello/architecture
-if [[ $status == 0 ]] && grep -q 'every commit on PR #7 is signed off' <<<"$out" && grep -q -- '--repo LinuxHello/architecture' "$work/calls"
+run yes 7 LinuxHello/linux-hello-architecture
+if [[ $status == 0 ]] && grep -q 'every commit on PR #7 is signed off' <<<"$out" && grep -q -- '--repo LinuxHello/linux-hello-architecture' "$work/calls"
 then ok "accepts owner/repo, and exits quietly when everything is signed off"; else nok "owner/repo form" "status $status: $out"; fi
 
 # 3. The default repository is unchanged: linux-hello, its own clone, no prompt answer needed to decline.
@@ -88,14 +88,14 @@ if [[ $status != 0 ]] && grep -q 'gh pr view 3 --repo LinuxHello/linux-hello' "$
 then ok "default repository is still linux-hello; declining changes nothing"; else nok "default repository" "status $status: $out"; fi
 
 # 4. A clone of another repository is refused, whatever CLONE_DIR says.
-CLONE_DIR="$work/clone-lh" run yes 7 architecture
-if [[ $status != 0 ]] && grep -q 'is a clone of LinuxHello/linux-hello, not of LinuxHello/architecture' <<<"$out" \
+CLONE_DIR="$work/clone-lh" run yes 7 linux-hello-architecture
+if [[ $status != 0 ]] && grep -q 'is a clone of LinuxHello/linux-hello, not of LinuxHello/linux-hello-architecture' <<<"$out" \
    && ! grep -q 'pr view' "$work/calls"
 then ok "refuses a clone of a different repository before asking GitHub anything"; else nok "wrong clone refused" "status $status: $out"; fi
 
 # 5. A directory that is not a clone is refused.
 mkdir -p "$work/empty"
-CLONE_DIR="$work/empty" run yes 7 architecture
+CLONE_DIR="$work/empty" run yes 7 linux-hello-architecture
 if [[ $status != 0 ]] && grep -q 'is not a clone with an origin remote' <<<"$out"; then ok "refuses a directory that is not a clone"; else nok "non-clone refused" "status $status: $out"; fi
 
 # 6. Bad usage.

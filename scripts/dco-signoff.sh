@@ -4,7 +4,7 @@
 #   dco-signoff.sh <pr-number> [<repo> | <owner>/<repo>]
 #
 # The repository defaults to $ORG/$REPO (LinuxHello/linux-hello). Name another one to certify a PR
-# there, for example `dco-signoff.sh 6 architecture`; `make signoff PR=6 REPO=architecture` does the same.
+# there, for example `dco-signoff.sh 6 linux-hello-architecture`; `make signoff PR=6 REPO=linux-hello-architecture` does the same.
 # The clone is $CLONE_DIR, which defaults to ~/projects/<owner>/<repo>. The script refuses a clone
 # whose origin is not that repository, so it can never rewrite the wrong one.
 #
