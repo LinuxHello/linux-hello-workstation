@@ -5,7 +5,8 @@
 export ORG ?= LinuxHello
 export REPO ?= linux-hello
 export OWNER ?= atterdag
-export CLONE_DIR ?= $(HOME)/projects/$(ORG)/$(REPO)
+# A clone kept under the short name (architecture, branding) from before the renaming is still found.
+export CLONE_DIR ?= $(firstword $(wildcard $(HOME)/projects/$(ORG)/$(REPO) $(HOME)/projects/$(ORG)/$(patsubst linux-hello-%,%,$(REPO))) $(HOME)/projects/$(ORG)/$(REPO))
 export ARCH_SRC ?= /srv/sync/GoogleDrive/Obsidian Vaults/Sovereign AI Workstation/Architecture
 export REPO_SLUG ?= $(ORG)/$(REPO)
 # The architecture repository (diagrams, the pinned Structurizr image and its scripts).
@@ -177,10 +178,10 @@ vm-test-agent-all:
 # The scripts live in $(ARCH_REPO_DIR)/scripts (resolve-image.sh, mirror-image.sh, image.env).
 ENGINE ?= podman
 image-check:
-	@test -f $(ARCH_REPO_DIR)/scripts/resolve-image.sh || { echo "$(ARCH_REPO_DIR)/scripts/resolve-image.sh missing: clone LinuxHello/architecture there and pull main (or set ARCH_REPO_DIR)"; exit 1; }
+	@test -f $(ARCH_REPO_DIR)/scripts/resolve-image.sh || { echo "$(ARCH_REPO_DIR)/scripts/resolve-image.sh missing: clone LinuxHello/linux-hello-architecture there and pull main (or set ARCH_REPO_DIR)"; exit 1; }
 	@bash $(ARCH_REPO_DIR)/scripts/resolve-image.sh $(ENGINE) >/dev/null
 image-mirror:
-	@test -f $(ARCH_REPO_DIR)/scripts/mirror-image.sh || { echo "$(ARCH_REPO_DIR)/scripts/mirror-image.sh missing: clone LinuxHello/architecture there and pull main (or set ARCH_REPO_DIR)"; exit 1; }
+	@test -f $(ARCH_REPO_DIR)/scripts/mirror-image.sh || { echo "$(ARCH_REPO_DIR)/scripts/mirror-image.sh missing: clone LinuxHello/linux-hello-architecture there and pull main (or set ARCH_REPO_DIR)"; exit 1; }
 	@bash $(ARCH_REPO_DIR)/scripts/mirror-image.sh
 
 # --- Checks ---------------------------------------------------------------------------------

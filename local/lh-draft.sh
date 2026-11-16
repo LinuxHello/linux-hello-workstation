@@ -17,7 +17,7 @@
 # the whole reply cap and left no answer, measured 2026-11-13), LH_DRAFT_MAX_TURNS (default 8, the ADR run; the brief draft has no tools and 3 turns), LH_DRAFT_CONTEXT_BYTES (default 24000), LH_DRAFT_MAX_OUTPUT (default 6000, Claude Code's cap on one reply), LH_MODELS_ENV and the settings of local/lh-model.sh.
 set -euo pipefail
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"
-: "${ARCH_REPO_DIR:=$HOME/projects/LinuxHello/architecture}"
+: "${ARCH_REPO_DIR:=$HOME/projects/LinuxHello/linux-hello-architecture}"
 : "${REPO_SLUG:=LinuxHello/linux-hello}"
 : "${LH_EXAMPLE_BRIEF:=106}"
 : "${LH_DRAFT_MAX_TURNS:=8}"

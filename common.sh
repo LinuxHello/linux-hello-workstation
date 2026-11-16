@@ -3,6 +3,11 @@
 : "${REPO:=linux-hello}"
 : "${OWNER:=atterdag}"
 : "${CLONE_DIR:=$HOME/projects/$ORG/$REPO}"
+# A clone kept under the short name (architecture, branding) from before the repositories were
+# renamed to linux-hello-<name> is still found.
+if [[ ! -d "$CLONE_DIR" && -d "$HOME/projects/$ORG/${REPO#linux-hello-}" ]]; then
+  CLONE_DIR="$HOME/projects/$ORG/${REPO#linux-hello-}"
+fi
 : "${ARCH_SRC:=/srv/sync/GoogleDrive/Obsidian Vaults/Sovereign AI Workstation/Architecture}"
 BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${TEMPLATE_DIR:=$BOOTSTRAP_DIR/repo}"

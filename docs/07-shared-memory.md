@@ -2,7 +2,7 @@
 
 **Goal:** set up the agents' shared memory once, keep it current, and know what it will and will not tell the models.
 
-The design is [ADR-0019](https://github.com/LinuxHello/architecture/blob/main/adr/0019-shared-agent-memory.md). In short: a LanceDB index of the repositories, their issues and briefs, and your private notes, plus a log of what agents concluded. It returns **evidence with its source, date and status, never an answer**, and marks what a model must not trust. It is not a source of truth: issues, pull requests, ADRs and code are.
+The design is [ADR-0019](https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0019-shared-agent-memory.md). In short: a LanceDB index of the repositories, their issues and briefs, and your private notes, plus a log of what agents concluded. It returns **evidence with its source, date and status, never an answer**, and marks what a model must not trust. It is not a source of truth: issues, pull requests, ADRs and code are.
 
 ## Set it up (once)
 

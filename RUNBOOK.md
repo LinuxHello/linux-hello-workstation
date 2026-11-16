@@ -12,7 +12,7 @@ Every task is a `make` target; `make help` lists them. This page says **when** t
 | Set labels and blocked-by links from `issues/triage.tsv` | `make triage`, then `make triage APPLY=1` | Labels and links on GitHub |
 | Refresh the Roadmap board | `make board` | The board only |
 | See which open issues wait for which | `make map` | `docs/dependency-map.md` (a Mermaid diagram that GitHub draws) |
-| Certify a pull request I reviewed | `make signoff PR=<n>` (another repository: `make signoff PR=<n> REPO=architecture`), then merge on GitHub | Rewrites the PR branch with your sign-off; refuses a clone that is not that repository's |
+| Certify a pull request I reviewed | `make signoff PR=<n>` (another repository: `make signoff PR=<n> REPO=linux-hello-architecture`), then merge on GitHub | Rewrites the PR branch with your sign-off; refuses a clone that is not that repository's |
 | Code with Claude locally, unbilled | `make claude-gpu` (fast) or `make claude-cpu` (128k window, slow) | No |
 | Run the implementer on one issue | `make implement ISSUE=<n>` (`HARNESS=claude` for Claude Code) | Branch, draft PR, labels |
 | Draft the next brief, have Claude check it, and publish it if it is clean | `make draft-next-brief` (`ISSUE=<n>`, `DRY=1`) | A comment on the issue and its status label, only when the check finds nothing wrong |

@@ -28,7 +28,7 @@ Start Claude Code on the workstation only through `make claude-gpu` (`local/clau
 
 Defaults: GPU `OLLAMA_MODEL=gemma4-26b-64k`, `LH_NUM_CTX=65536`; CPU `OLLAMA_MODEL=gemma4-26b-128k`, `LH_NUM_CTX=131072` (about 40 tokens/s prompt processing and 4 tokens/s generation, so slow). `LH_BG_MODEL` is the main model. A separate background model (for example `LH_BG_MODEL=ornith:9b`) does not fit in VRAM beside gemma and makes Ollama evict or offload one of them. The sessions start lean (no MCP servers, user plugins or skills, which would add many tokens to every prompt); `LH_LEAN=0` loads everything. To pass flags, run the script directly: `local/claude-local-gpu.sh --remote-control`.
 
-## Shared memory ([ADR-0019](https://github.com/LinuxHello/architecture/blob/main/adr/0019-shared-agent-memory.md))
+## Shared memory ([ADR-0019](https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0019-shared-agent-memory.md))
 
 A LanceDB index of the repositories, their issues and briefs, and your private notes, plus a log of what agents concluded. It returns evidence with its kind, source, date and status, never a verdict, and marks what an agent must not trust: hits that disagree (`CONFLICT`), agent-written rows nobody verified (`UNVERIFIED`), names a note cites that the repository does not contain (`NOT IN REPOSITORY`), and notes that changed since they were read.
 

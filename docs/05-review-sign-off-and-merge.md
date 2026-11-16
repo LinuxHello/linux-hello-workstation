@@ -25,7 +25,7 @@ The lead (a Claude session) opens pull requests and reviews them. It never adds 
 
    ```sh
    make signoff PR=<n>                                  # the project repository
-   make signoff PR=<n> REPO=architecture                # the architecture repository
+   make signoff PR=<n> REPO=linux-hello-architecture         # the architecture repository
    ```
 
    The script lists every commit of the pull request that lacks a `Signed-off-by:` line and asks for an explicit `yes`. It then rebases the branch onto its base (`main`) with `--signoff`, re-signing with your local key, and force-pushes with a lease. It works in a temporary worktree, so your clone is untouched. It refuses to run when the clone's `origin` is not that repository.
@@ -56,7 +56,7 @@ If the pull request did not close its issue ("Closes #n" was missing), close it 
 
 ### `dco`
 
-Your sign-off is missing on one or more commits (this check exists in `linux-hello` and `architecture`, not in `linux-hello-workstation`). Run `make signoff PR=<n>` again; it lists the commits that lack it before it changes anything.
+Your sign-off is missing on one or more commits (this check exists in `linux-hello` and `linux-hello-architecture`, not in `linux-hello-workstation`). Run `make signoff PR=<n>` again; it lists the commits that lack it before it changes anything.
 
 ### `SonarCloud Code Analysis`
 

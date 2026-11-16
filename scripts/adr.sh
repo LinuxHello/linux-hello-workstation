@@ -6,10 +6,10 @@
 #   scripts/adr.sh setup          point adr at <architecture clone>/adr (writes .adr-dir, untracked)
 #   scripts/adr.sh new <title>    create the next numbered ADR from <clone>/templates/adr.md, status Proposed
 #
-# Environment: ARCH_REPO_DIR (the architecture clone, default ~/projects/LinuxHello/architecture).
+# Environment: ARCH_REPO_DIR (the architecture clone, default ~/projects/LinuxHello/linux-hello-architecture).
 # Nothing is committed or pushed. adr/README.md, the index of the ADRs, is edited by hand.
 set -euo pipefail
-: "${ARCH_REPO_DIR:=$HOME/projects/LinuxHello/architecture}"
+: "${ARCH_REPO_DIR:=$HOME/projects/LinuxHello/linux-hello-architecture}"
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 [[ -d "$ARCH_REPO_DIR/adr" && -f "$ARCH_REPO_DIR/templates/adr.md" ]] \
