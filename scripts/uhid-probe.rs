@@ -45,6 +45,13 @@ fn create2(name: &str, desc: &[u8], vendor: u32, product: u32) -> Vec<u8> {
     e
 }
 
+/// Sets the `uniq` field of a CREATE2 event: the string udev reads as `HID_UNIQ`.
+fn with_uniq(mut e: Vec<u8>, uniq: &str) -> Vec<u8> {
+    let o = 4 + 128 + 64;
+    e[o..o + uniq.len()].copy_from_slice(uniq.as_bytes());
+    e
+}
+
 fn uhid() -> File {
     OpenOptions::new().read(true).write(true).open("/dev/uhid").unwrap_or_else(|e| {
         println!("uhid: cannot open /dev/uhid: {e}");
@@ -61,6 +68,17 @@ fn main() {
             f.write_all(&create2("Linux Hello probe key", FIDO, 0x1209, 0xF1D0)).expect("create");
             println!("created fido");
             std::thread::sleep(Duration::from_secs(secs(2)));
+        }
+        // A FIDO device marked for one user: `owned <uid> <seconds>`. It is destroyed after the time, or
+        // when the process ends (the kernel destroys it when the file is closed).
+        Some("owned") => {
+            let uid = args.get(2).map(String::as_str).unwrap_or("0");
+            let mut f = uhid();
+            let e = with_uniq(create2("Linux Hello probe key", FIDO, 0x1209, 0xF1D0), &format!("linuxhello-uid-{uid}"));
+            f.write_all(&e).expect("create");
+            println!("created fido for uid {uid}");
+            std::thread::sleep(Duration::from_secs(secs(3)));
+            f.write_all(&UHID_DESTROY.to_le_bytes()).expect("destroy");
         }
         Some("keyboard") => {
             let mut f = uhid();
@@ -87,7 +105,7 @@ fn main() {
             Err(e) => println!("denied: {e}"),
         },
         _ => {
-            eprintln!("usage: uhid-probe fido|keyboard|swap <seconds> | open <path> | net");
+            eprintln!("usage: uhid-probe fido|keyboard|swap <seconds> | owned <uid> <seconds> | open <path> | net");
             std::process::exit(64);
         }
     }
