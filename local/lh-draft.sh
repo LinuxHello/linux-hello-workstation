@@ -111,8 +111,16 @@ $decision
 
 Set the status to Proposed. State the context from what you read in the repository's docs, the options
 with pros and cons, the decision as given, and the consequences (what becomes easier, what harder). Do
-not invent facts: write 'not checked' where you did not read it. Answer with the ADR only, in Markdown,
-starting with the frontmatter."
+not invent facts: write 'not checked' where you did not read it.
+
+Write for a reader who is new to the subject: someone who uses Linux and has programmed, but has never
+worked with passkeys, a TPM, PAM or D-Bus and has read no other page of the project. Begin the Context
+with what the parts involved are and what the problem is, in everyday words. Explain every term and
+abbreviation in one clause where it first appears. Never leave an identifier (an ADR, issue or spike
+number, 'P-12', 'M2') to explain itself: say in words what it states, then give the identifier. For the
+decision and each consequence give the reason. Write full sentences. Keep exact names, paths and numbers.
+
+Answer with the ADR only, in Markdown, starting with the frontmatter."
 fi
 
 lh_role draft

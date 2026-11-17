@@ -70,6 +70,8 @@ check "an_answer_without_the_brief_heading_is_rejected" "$([[ $rc -ne 0 && ! -f 
 printf 'Here you go:\n---\ntype: adr\n---\n# ADR-0019: Platforms\n' > "$work/answer"
 rc=0; bash "$here/lh-draft.sh" adr "Supported platforms" "AppArmor only" > "$work/out" 2>&1 || rc=$?
 check "an_adr_draft_starts_at_its_frontmatter" "$([[ $rc -eq 0 && "$(head -1 "$work/drafts/adr-supported-platforms.md")" == --- ]]; echo $?)"
+# The maintainer's rule for documents: a reader with no earlier knowledge must be able to follow them.
+check "the_adr_prompt_asks_for_a_text_a_newcomer_can_follow" "$(grep -q 'reader who is new to the subject' "$work/claude.args" && grep -q 'Explain every term' "$work/claude.args"; echo $?)"
 
 printf 'qwen38-27b-text-32k:latest\n' > "$work/srv/loaded"
 cat > "$work/bin/pgrep" <<'SH'
