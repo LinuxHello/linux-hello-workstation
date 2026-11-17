@@ -35,6 +35,7 @@ bash "$vm" ssh 'rm -rf ~/agent-test && mkdir -p ~/agent-test/scripts/ci ~/agent-
 copy() { bash "$vm" ssh "cat > ~/agent-test/$2" < "$1"; }
 copy "$bin" "target/$target/release/linuxhello-agent"
 copy "$sec/dbus/io.github.LinuxHello.Agent1.conf" security/dbus/io.github.LinuxHello.Agent1.conf
+copy "$sec/dbus/io.github.LinuxHello.Agent1.service" security/dbus/io.github.LinuxHello.Agent1.service
 copy "$sec/systemd/linuxhello-agent.service" security/systemd/linuxhello-agent.service
 copy "$sec/systemd/linuxhello.sysusers" security/systemd/linuxhello.sysusers
 copy "$sec/apparmor/linuxhello-agent" security/apparmor/linuxhello-agent
