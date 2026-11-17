@@ -65,6 +65,7 @@ help:
 	@echo "  make vm-test-uhid         spike 121: the uhid helper under a profile, and what a compromised one can do"
 	@echo "  make vm-test-uhid-session spike 138: one virtual key per user and session, on a seat with two users"
 	@echo "  make vm-test-prompt-identity spike 177: what tells the Agent the prompt is the real one, and what a same-user impostor can do"
+	@echo "  make vm-test-prompt-launch spike 177 follow-up: a non-root Agent starts the prompt as a system unit, and what a same-user impostor can do"
 	@echo "  make vm-test-uvup         spike 120: resident keys, presence and user verification in the virtual CTAP authenticator, browsers, and a same-user process against the prompt"
 	@echo
 	@echo "Architecture repository: the pinned Structurizr image (needs the architecture checkout at $(ARCH_REPO_DIR))"
