@@ -35,9 +35,11 @@ seed="$LH_VM_DIR/seed.iso"
 key="$LH_VM_DIR/id_ed25519"
 tpm_dir="$LH_VM_DIR/tpm"
 pidfile="$LH_VM_DIR/qemu.pid"
+base_stamp="$LH_VM_DIR/disk.base"   # size and date of the image the disk was made on
 tpm_pidfile="$LH_VM_DIR/swtpm.pid"
 
 need() { command -v "$1" >/dev/null || die "$1 not installed ($2)"; }
+base_state() { stat -c '%s %Y' "$base_img"; }
 running() { [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; }
 ssh_opts=(-i "$key" -p "$LH_VM_SSH_PORT" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
           -o LogLevel=ERROR -o ConnectTimeout=5)
@@ -77,9 +79,16 @@ cmd_up() {
   running && { log "already running (ssh port $LH_VM_SSH_PORT)"; return 0; }
   mkdir -p "$LH_VM_DIR" "$tpm_dir"
   [[ -f "$key" ]] || ssh-keygen -q -t ed25519 -N '' -C linux-hello-vm -f "$key"
+  if [[ -f "$disk" && -f "$base_stamp" && "$(base_state)" != "$(cat "$base_stamp")" ]]; then
+    # The disk stores only what changed since the image. If the image was downloaded again
+    # (a new build of the same release), the disk no longer fits it and the guest stops at the
+    # boot loader with "no such device". That is what looked like a broken Ubuntu 26.04 guest.
+    die "the image $base_img changed after this disk was made; run scripts/vm.sh reset and then up"
+  fi
   if [[ ! -f "$disk" ]]; then
     log "creating a fresh 20 GiB disk on top of the image"
     qemu-img create -q -f qcow2 -b "$base_img" -F qcow2 "$disk" 20G
+    base_state >"$base_stamp"
     cat >"$LH_VM_DIR/user-data" <<EOF
 #cloud-config
 users:
@@ -136,7 +145,7 @@ stop_vm() {
 cmd_down() { stop_vm; log "stopped (disk and TPM state kept)"; }
 cmd_reset() {
   stop_vm
-  rm -rf "$disk" "$seed" "$tpm_dir" "$LH_VM_DIR/user-data" "$LH_VM_DIR/meta-data" "$LH_VM_DIR/console.log"
+  rm -rf "$disk" "$base_stamp" "$seed" "$tpm_dir" "$LH_VM_DIR/user-data" "$LH_VM_DIR/meta-data" "$LH_VM_DIR/console.log"
   log "disk, seed and TPM state removed; the downloaded image is kept"
 }
 cmd_status() {
