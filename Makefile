@@ -16,7 +16,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -64,6 +64,7 @@ help:
 	@echo "  make vm-test-rpbind       spike 119: a credential key bound to its relying party inside the TPM"
 	@echo "  make vm-test-uhid         spike 121: the uhid helper under a profile, and what a compromised one can do"
 	@echo "  make vm-test-uhid-session spike 138: one virtual key per user and session, on a seat with two users"
+	@echo "  make vm-test-prompt-identity spike 177: what tells the Agent the prompt is the real one, and what a same-user impostor can do"
 	@echo "  make vm-test-uvup         spike 120: resident keys, presence and user verification in the virtual CTAP authenticator, browsers, and a same-user process against the prompt"
 	@echo
 	@echo "Architecture repository: the pinned Structurizr image (needs the architecture checkout at $(ARCH_REPO_DIR))"
@@ -172,6 +173,7 @@ vm-test-pam: ; @bash scripts/vm-test-pam.sh
 vm-test-rpbind: ; @bash scripts/vm-test-rpbind.sh
 vm-test-uhid: ; @bash scripts/vm-test-uhid.sh
 vm-test-uhid-session: ; @bash scripts/vm-test-uhid-session.sh
+vm-test-prompt-identity: ; @bash scripts/vm-test-prompt-identity.sh
 vm-test-uvup: ; @bash scripts/vm-test-uvup.sh
 vm-test-agent-all:
 	@for r in $(VM_RELEASES); do echo "==> Ubuntu $$r"; $(MAKE) --no-print-directory vm-up vm-test-agent VM_RELEASE=$$r || exit 1; done
