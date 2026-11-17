@@ -16,7 +16,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -173,6 +173,7 @@ vm-test-pam: ; @bash scripts/vm-test-pam.sh
 vm-test-rpbind: ; @bash scripts/vm-test-rpbind.sh
 vm-test-uhid: ; @bash scripts/vm-test-uhid.sh
 vm-test-uhid-session: ; @bash scripts/vm-test-uhid-session.sh
+vm-test-prompt-launch: ; @bash scripts/vm-test-prompt-launch.sh
 vm-test-prompt-identity: ; @bash scripts/vm-test-prompt-identity.sh
 vm-test-uvup: ; @bash scripts/vm-test-uvup.sh
 vm-test-agent-all:
