@@ -29,7 +29,6 @@
 131	needs-brief	next	136	Umbrella: items 1, 3a and 4 are done (#159, #161, #132); item 2 waits for the unlock-state ADR (#136); item 3b is decided by ADR-0023 and follows in #196 and #197
 132	ready	next	-	Brief posted for P-13 and P-27 (enable the two placeholders for the events that exist). Left after that: the PIN-only event, the later events (unlock, signature, PIN change, reset) and LH_PEER wait on components that do not exist
 171	needs-brief	later	-	Split from #132: Caller carries the bus name and the audit record gets LH_PEER; nothing blocks it
-172	needs-brief	next	-	Split from #132: the Agent does not call policy::load yet; load the policy, answer from it and audit the PIN-only fallback; #151 (cache) waits on it
 173	needs-brief	later	-	Split from #139: sensor gesture when policy requires it (test signature_without_a_sensor_gesture_is_refused_when_policy_requires_it)
 174	needs-brief	later	-	Split from #139: UV only after verification for this request or within a window of at most 60 s
 175	blocked	later	177	Split from #139: confined presence prompt that shows the relying-party id
@@ -72,3 +71,4 @@
 148	in-review	later	-	Stale documents after ADR-0005, ADR-0014 and ADR-0023: linux-hello PR and architecture PR open
 249	needs-brief	later	-	doctor: detect a cleared TPM (split from #216); needs the root key's handle decided first
 156	needs-brief	next	-	Agent API errors and state: slice 1 (named errors) merged in #248; slices 2 and 3 need briefs
+255	needs-brief	later	-	Budget check: p99 5 ms for the Agent calls; a benchmark can come before #150 points 1 to 4
