@@ -68,5 +68,7 @@
 213	blocked	next	155,214	Status on the login and lock screens (split from #155)
 214	needs-brief	next	-	ADR: GetStatus interface (split from #155); the maintainer decides
 215	blocked	later	155,180	tpm-locked condition (split from #155)
-216	blocked	later	155	doctor probes of the outside world (split from #155)
+216	ready	later	-	doctor probes of the outside world (split from #155); brief posted, TPM cleared split to #249
 148	in-review	later	-	Stale documents after ADR-0005, ADR-0014 and ADR-0023: linux-hello PR and architecture PR open
+249	needs-brief	later	-	doctor: detect a cleared TPM (split from #216); needs the root key's handle decided first
+156	needs-brief	next	-	Agent API errors and state: slice 1 (named errors) merged in #248; slices 2 and 3 need briefs
