@@ -40,7 +40,7 @@
 183	blocked	later	182	Split from #137: swtpm test of P-14 and agent_never_changes_tpm_lockout_parameters
 184	blocked	later	182	Split from #137: VM check, N wrong PINs for user A leave user B working
 185	in-review	later	-	Split from #137: drop "TPM dictionary-attack parameters" from the schema docs and section 8
-186	needs-brief	next	-	Split from #140: the Agent PIN socket checked with SO_PEERCRED (ADR-0021)
+186	ready	next	-	Split from #140: the Agent PIN socket checked with SO_PEERCRED (ADR-0021)
 187	blocked	later	186	Split from #140: stretch the PIN with a per-user salt
 188	blocked	later	186	Split from #140: salted HMAC TPM sessions with parameter encryption
 189	in-review	next	-	Split from #140: clear PIN buffers, no Debug on secrets, no core dumps
@@ -71,4 +71,3 @@
 148	in-review	later	-	Stale documents after ADR-0005, ADR-0014 and ADR-0023: linux-hello PR and architecture PR open
 249	needs-brief	later	-	doctor: detect a cleared TPM (split from #216); needs the root key's handle decided first
 156	needs-brief	next	-	Agent API errors and state: slice 1 (named errors) merged in #248; slices 2 and 3 need briefs
-255	ready	later	-	Budget check: p99 5 ms for the Agent calls; a benchmark can come before #150 points 1 to 4
