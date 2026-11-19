@@ -34,8 +34,6 @@
 175	blocked	later	177	Split from #139: confined presence prompt that shows the relying-party id
 176	needs-brief	later	-	Split from #139: one prompt and one signature per ceremony
 177	needs-brief	next	-	Spike: what authenticates the presence prompt when it runs in the user session (ADR-0020 point 6); #175 waits on it
-180	ready	next	-	The Agent owns the PIN lock: restore and save the records, limits from the policy (also covers #181)
-181	blocked	next	180	Covered by the brief on #180; closes with it
 182	blocked	later	180,181,186	Split from #137: call the counter in the PIN path; waits on the PIN socket (#186)
 183	blocked	later	182	Split from #137: swtpm test of P-14 and agent_never_changes_tpm_lockout_parameters
 184	blocked	later	182	Split from #137: VM check, N wrong PINs for user A leave user B working
@@ -48,7 +46,7 @@
 192	needs-brief	later	-	Split from #145: health call, linuxhello-ctl status, SIGTERM handling and error logging in main
 193	needs-brief	later	-	Split from #145: what a client does when the Agent name changes owner
 194	blocked	later	193	Split from #145: VM checks for Agent availability at login
-195	needs-brief	next	-	Split from #147: the Agent runs face, fingerprint and PIN, first success wins (ADR-0023)
+195	ready	next	-	Split from #147: the Agent runs face, fingerprint and PIN, first success wins (ADR-0023)
 196	blocked	later	195	Split from #147: pam_linuxhello as a thin synchronous client with a hard deadline
 197	needs-brief	next	-	Split from #147: shipped PAM snippets keep pam_unix after pam_linuxhello
 198	blocked	later	196,197	Split from #147: VM runs of the PAM module in login, unlock, sudo and console
