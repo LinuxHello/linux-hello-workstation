@@ -16,7 +16,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-pam-contexts vm-test-fingerprint vm-test-provider vm-test-pam vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -62,6 +62,7 @@ help:
 	@echo "  make vm-test-agent-all    the same on every release (boots each VM; the images must be downloaded)"
 	@echo "  make vm-test-fingerprint  the fingerprint method against the real fprintd in the VM (installs fprintd there; virtual finger)"
 	@echo "  make vm-test-pam-sudo     the PAM module in real sudo: right, wrong and empty PIN, stopped Agent; Ubuntu 26.04 VM"
+	@echo "  make vm-test-pam-contexts the PAM module in the console login, lock screen and sudo stacks, also a hung Agent"
 	@echo "  make vm-test-pin          the whole PIN chain in the VM (Agent, TPM provider, linuxhello-ctl pin set and change); Ubuntu 26.04 VM"
 	@echo "  make vm-test-provider     install the TPM provider with its unit and AppArmor profile in the VM and test it on the VM's TPM (the VM must be of this machine's release: it is a dynamic binary)"
 	@echo "  make vm-test-pam vm-test-rpbind vm-test-uhid          spike 0007 at runtime: which bus a process reaches from inside sudo and a root PAM caller"
@@ -176,6 +177,7 @@ vm-status: ; @echo "Ubuntu $(VM_RELEASE), ssh port $(LH_VM_SSH_PORT)"; bash scri
 vm-test-agent: ; @bash scripts/vm-test-agent.sh
 vm-test-pin: ; @bash scripts/vm-test-pin.sh
 vm-test-pam-sudo: ; @bash scripts/vm-test-pam-sudo.sh
+vm-test-pam-contexts: ; @bash scripts/vm-test-pam-sudo.sh contexts
 vm-test-fingerprint: ; @bash scripts/vm-test-fingerprint.sh
 vm-test-provider: ; @bash scripts/vm-test-provider.sh
 vm-test-pam: ; @bash scripts/vm-test-pam.sh

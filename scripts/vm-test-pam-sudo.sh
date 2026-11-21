@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # The PAM module in real sudo in the test VM: builds the Agent, the CLI, the TPM provider and the
 # PAM module, copies them with the security files and the prototype installer into the VM, and
-# runs scripts/ci/pam-sudo.sh of the linux-hello repository there (it installs with
-# scripts/prototype/install.sh --no-build and drives sudo -S with a PIN, a wrong PIN, an empty
-# answer and a stopped Agent).
+# runs a check of the linux-hello repository there: scripts/ci/pam-sudo.sh (real sudo -S) or, with
+# the argument contexts, scripts/ci/pam-contexts.sh (the console login, lock-screen and sudo stacks
+# through pamtester, including an Agent that hangs). Both install with
+# scripts/prototype/install.sh --no-build and try a PIN, a wrong PIN, an empty answer and a
+# stopped Agent.
 #
-#   scripts/vm-test-pam-sudo.sh     build, install, test (VM must be up: make vm-up)
+#   scripts/vm-test-pam-sudo.sh            build, install, test sudo (VM must be up: make vm-up)
+#   scripts/vm-test-pam-sudo.sh contexts   the same for login, the lock screen and sudo
 #
 # The provider and the PAM module link system libraries (TSS2, libpam), so they are built on this
 # machine for the release of the VM, and the VM must run the same release (Ubuntu 26.04: export
@@ -16,10 +19,12 @@ source "$(dirname "$0")/../common.sh"
 
 vm="$(dirname "$0")/vm.sh"
 musl=x86_64-unknown-linux-musl
-t=pam-sudo-test
+check=pam-sudo
+[[ "${1:-}" == contexts ]] && check=pam-contexts
+t=$check-test
 
 bash "$vm" status | grep -q '^running' || die "the VM is not running: make vm-up"
-[[ -f "$CLONE_DIR/scripts/ci/pam-sudo.sh" ]] || die "$CLONE_DIR has no scripts/ci/pam-sudo.sh (CLONE_DIR=<a checkout with the PAM module>)"
+[[ -f "$CLONE_DIR/scripts/ci/$check.sh" ]] || die "$CLONE_DIR has no scripts/ci/$check.sh (CLONE_DIR=<a checkout with the PAM module>)"
 
 log "building the Agent and the CLI (static), the provider and the PAM module (this release)"
 (cd "$CLONE_DIR" \
@@ -38,7 +43,7 @@ for f in dbus/io.github.LinuxHello.Agent1.conf dbus/io.github.LinuxHello.Agent1.
          apparmor/linuxhello-agent apparmor/linuxhello-tpm-provider polkit/50-linuxhello-agent.rules; do
   copy "security/$f" "security/$f"
 done
-for f in scripts/ci/pam-sudo.sh scripts/prototype/install.sh scripts/prototype/uninstall.sh; do copy "$f" "$f"; done
+for f in scripts/ci/$check.sh scripts/prototype/install.sh scripts/prototype/uninstall.sh; do copy "$f" "$f"; done
 
 log "installing and testing in the VM"
-bash "$vm" ssh "cd ~/$t && chmod +x target/$musl/release/* target/release/linuxhello-tpm-provider && LH_CONFINEMENT_INSTALL=yes bash scripts/ci/pam-sudo.sh"
+bash "$vm" ssh "cd ~/$t && chmod +x target/$musl/release/* target/release/linuxhello-tpm-provider && LH_CONFINEMENT_INSTALL=yes bash scripts/ci/$check.sh"
