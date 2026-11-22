@@ -31,7 +31,7 @@ log "building a static binary of the Agent"
   || die "build failed (musl target missing? rustup target add --toolchain \$(grep channel rust-toolchain.toml | cut -d'\"' -f2) $target)"
 
 log "copying the files into the VM"
-bash "$vm" ssh 'rm -rf ~/agent-test && mkdir -p ~/agent-test/scripts/ci ~/agent-test/security/dbus ~/agent-test/security/systemd ~/agent-test/security/apparmor ~/agent-test/target/'"$target"'/release'
+bash "$vm" ssh 'rm -rf ~/agent-test && mkdir -p ~/agent-test/scripts/ci ~/agent-test/security/dbus ~/agent-test/security/systemd ~/agent-test/security/apparmor ~/agent-test/security/polkit ~/agent-test/target/'"$target"'/release'
 copy() { bash "$vm" ssh "cat > ~/agent-test/$2" < "$1"; }
 copy "$bin" "target/$target/release/linuxhello-agent"
 copy "$sec/dbus/io.github.LinuxHello.Agent1.conf" security/dbus/io.github.LinuxHello.Agent1.conf
@@ -39,6 +39,12 @@ copy "$sec/dbus/io.github.LinuxHello.Agent1.service" security/dbus/io.github.Lin
 copy "$sec/systemd/linuxhello-agent.service" security/systemd/linuxhello-agent.service
 copy "$sec/systemd/linuxhello.sysusers" security/systemd/linuxhello.sysusers
 copy "$sec/apparmor/linuxhello-agent" security/apparmor/linuxhello-agent
+# The polkit rule for the Agent's user, and the reset action where the checkout has it (linux-hello
+# from #316 on). Without them the polkit check passed only on a rule an earlier script installed.
+copy "$sec/polkit/50-linuxhello-agent.rules" security/polkit/50-linuxhello-agent.rules
+if [ -f "$sec/polkit/io.github.LinuxHello.policy" ]; then
+  copy "$sec/polkit/io.github.LinuxHello.policy" security/polkit/io.github.LinuxHello.policy
+fi
 copy "$CLONE_DIR/scripts/ci/confinement.sh" scripts/ci/confinement.sh
 
 log "installing and testing in the VM"
