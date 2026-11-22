@@ -142,8 +142,20 @@ cmd_sync() {
   log "copied $CLONE_DIR to ~/linux-hello in the VM (no .git, no target)"
 }
 
+# Shuts the guest down cleanly before QEMU goes: killing QEMU is a power cut, and files the guest
+# wrote just before (an installer's /etc/pam.d/sudo, for one) can come back empty after it.
+# Asks the guest to power off over ssh, then through QEMU's monitor (the ACPI power button), and
+# kills QEMU only if it is still running after 60 seconds.
 stop_vm() {
-  if running; then kill "$(cat "$pidfile")" 2>/dev/null || true; fi
+  if running; then
+    ssh "${ssh_opts[@]}" -o ConnectTimeout=5 lh@127.0.0.1 'sync; sudo systemctl poweroff' >/dev/null 2>&1 \
+      || { [[ -S "$LH_VM_DIR/monitor.sock" ]] && python3 -c '
+import socket, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1]); s.sendall(b"system_powerdown\n"); s.close()
+' "$LH_VM_DIR/monitor.sock"; } || true
+    for _ in $(seq 60); do running || break; sleep 1; done
+    if running; then log "the guest did not power off in 60 s; stopping QEMU"; kill "$(cat "$pidfile")" 2>/dev/null || true; fi
+  fi
   # swtpm exits when qemu goes and removes its own pid file, so the file can vanish while we read it.
   swtpm_pid="$(cat "$tpm_pidfile" 2>/dev/null || true)"
   [[ -z "$swtpm_pid" ]] || kill "$swtpm_pid" 2>/dev/null || true
