@@ -1,0 +1,16 @@
+[package]
+name = "linuxhello-plasma-spike"
+version = "0.0.0"
+edition = "2021"
+license = "LGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+cxx = "1"
+cxx-qt = "0.10.0"
+cxx-qt-lib = { version = "0.10.0", features = ["qt_gui", "qt_qml"] }
+zbus = "6.2"
+futures-lite = "2"
+
+[build-dependencies]
+cxx-qt-build = { version = "0.10.0", features = ["link_qt_object_files"] }
