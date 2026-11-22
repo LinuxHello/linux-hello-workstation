@@ -27,7 +27,7 @@ log "building the Agent and the CLI (static), the provider and the PAM module (t
   && cargo build --release -p linuxhello-tpm-provider -p pam-linuxhello) || die "build failed"
 
 log "copying the files into the VM"
-bash "$vm" ssh "rm -rf ~/$t && mkdir -p ~/$t/scripts/ci ~/$t/scripts/prototype ~/$t/security/{dbus,systemd,apparmor,polkit} ~/$t/target/$musl/release ~/$t/target/release"
+bash "$vm" ssh "rm -rf ~/$t && mkdir -p ~/$t/scripts/ci ~/$t/scripts/prototype ~/$t/security/{dbus,systemd,apparmor,polkit} ~/$t/plasma/autostart ~/$t/target/$musl/release ~/$t/target/release"
 copy() { bash "$vm" ssh "cat > ~/$t/$2" < "$CLONE_DIR/$1"; }
 copy "target/$musl/release/linuxhello-agent" "target/$musl/release/linuxhello-agent"
 copy "target/$musl/release/linuxhello-ctl" "target/$musl/release/linuxhello-ctl"
@@ -37,6 +37,11 @@ for f in dbus/io.github.LinuxHello.Agent1.conf dbus/io.github.LinuxHello.Agent1.
          systemd/linuxhello-agent.service systemd/linuxhello-tpm-provider.service systemd/linuxhello.sysusers \
          apparmor/linuxhello-agent apparmor/linuxhello-tpm-provider polkit/50-linuxhello-agent.rules; do
   copy "security/$f" "security/$f"
+done
+# The reset action and the notification's autostart entry, where the checkout has them (the installer
+# of linux-hello from #333 and #334 on installs both).
+for f in security/polkit/io.github.LinuxHello.policy plasma/autostart/linuxhello-notify.desktop; do
+  [[ -f "$CLONE_DIR/$f" ]] && copy "$f" "$f"
 done
 for f in scripts/ci/pam-sudo.sh scripts/prototype/install.sh scripts/prototype/uninstall.sh; do copy "$f" "$f"; done
 

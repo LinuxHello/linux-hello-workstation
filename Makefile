@@ -16,7 +16,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-greetd vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-greetd vm-desktop vm-test-greeter vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -180,6 +180,8 @@ vm-test-fingerprint: ; @bash scripts/vm-test-fingerprint.sh
 vm-test-provider: ; @bash scripts/vm-test-provider.sh
 vm-test-pam: ; @bash scripts/vm-test-pam.sh
 vm-test-greetd: ; @bash scripts/vm-test-greetd.sh
+vm-desktop: ; @bash scripts/vm-desktop.sh
+vm-test-greeter: ; @bash scripts/vm-test-greeter.sh
 vm-test-rpbind: ; @bash scripts/vm-test-rpbind.sh
 vm-test-uhid: ; @bash scripts/vm-test-uhid.sh
 vm-test-uhid-session: ; @bash scripts/vm-test-uhid-session.sh
