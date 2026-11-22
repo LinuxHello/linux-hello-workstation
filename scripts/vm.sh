@@ -10,10 +10,15 @@
 #   scripts/vm.sh reset    shut down and throw the disk and the TPM state away
 #   scripts/vm.sh down     shut down, keeping the disk and the TPM state
 #   scripts/vm.sh status
+#   scripts/vm.sh screenshot FILE.png   save what the VM's screen shows (a VM with a desktop)
 #
 # Another release beside the first (its own image, disk and ssh port), for example Ubuntu 26.04:
 #   export LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604 LH_VM_SSH_PORT=2223
 #   scripts/vm.sh image && scripts/vm.sh up && scripts/vm-test-agent.sh
+# A VM with a desktop for the login and lock screens (more memory and disk; its own directory):
+#   export LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604-desktop LH_VM_SSH_PORT=2224 \
+#          LH_VM_MEM=8192 LH_VM_DISK=40G
+#   scripts/vm.sh image && scripts/vm.sh up && scripts/vm-desktop.sh
 # Ubuntu 24.04 is the release CI runs on. The VM has KVM, 4 CPUs, 4 GiB, a TPM 2.0 from swtpm
 # (the guest sees /dev/tpm0 and /dev/tpmrm0) and a user-mode network: ssh on 127.0.0.1:$LH_VM_SSH_PORT
 # only, no inbound access from the LAN. Everything lives in $LH_VM_DIR; nothing outside it changes.
@@ -28,6 +33,7 @@ source "$(dirname "$0")/../common.sh"
 : "${LH_VM_CPUS:=4}"
 : "${LH_VM_MEM:=4096}"
 : "${LH_VM_RELEASE:=24.04}"
+: "${LH_VM_DISK:=20G}"
 base_url="https://cloud-images.ubuntu.com/releases/$LH_VM_RELEASE/release"
 base_img="$LH_VM_DIR/ubuntu-$LH_VM_RELEASE-server-cloudimg-amd64.img"
 disk="$LH_VM_DIR/disk.qcow2"
@@ -86,8 +92,8 @@ cmd_up() {
     die "the image $base_img changed after this disk was made; run scripts/vm.sh reset and then up"
   fi
   if [[ ! -f "$disk" ]]; then
-    log "creating a fresh 20 GiB disk on top of the image"
-    qemu-img create -q -f qcow2 -b "$base_img" -F qcow2 "$disk" 20G
+    log "creating a fresh $LH_VM_DISK disk on top of the image"
+    qemu-img create -q -f qcow2 -b "$base_img" -F qcow2 "$disk" "$LH_VM_DISK"
     base_state >"$base_stamp"
     cat >"$LH_VM_DIR/user-data" <<EOF
 #cloud-config
@@ -116,7 +122,8 @@ EOF
     -netdev user,id=n0,hostfwd=tcp:127.0.0.1:"$LH_VM_SSH_PORT"-:22 -device virtio-net-pci,netdev=n0 \
     -chardev socket,id=chrtpm,path="$LH_VM_DIR/swtpm.sock" -tpmdev emulator,id=tpm0,chardev=chrtpm \
     -device tpm-tis,tpmdev=tpm0 \
-    -display none -serial file:"$LH_VM_DIR/console.log" -pidfile "$pidfile" -daemonize
+    -vga virtio -display none -monitor unix:"$LH_VM_DIR/monitor.sock",server,nowait \
+    -serial file:"$LH_VM_DIR/console.log" -pidfile "$pidfile" -daemonize
   log "waiting for ssh (first boot installs packages: a few minutes)"
   for _ in $(seq 120); do
     ssh "${ssh_opts[@]}" lh@127.0.0.1 true 2>/dev/null && { log "up: scripts/vm.sh ssh"; return 0; }
@@ -140,7 +147,7 @@ stop_vm() {
   # swtpm exits when qemu goes and removes its own pid file, so the file can vanish while we read it.
   swtpm_pid="$(cat "$tpm_pidfile" 2>/dev/null || true)"
   [[ -z "$swtpm_pid" ]] || kill "$swtpm_pid" 2>/dev/null || true
-  rm -f "$pidfile" "$tpm_pidfile" "$LH_VM_DIR/swtpm.sock"
+  rm -f "$pidfile" "$tpm_pidfile" "$LH_VM_DIR/swtpm.sock" "$LH_VM_DIR/monitor.sock"
 }
 cmd_down() { stop_vm; log "stopped (disk and TPM state kept)"; }
 cmd_reset() {
@@ -153,6 +160,20 @@ cmd_status() {
   [[ -f "$base_img" ]] && echo "image: $base_img" || echo "image: not downloaded"
 }
 
+# Saves the VM's screen through QEMU's monitor (screendump), as PNG.
+cmd_screenshot() {
+  running || die "not running: scripts/vm.sh up"
+  [[ -n "${1:-}" ]] || die "usage: scripts/vm.sh screenshot FILE.png"
+  local out; out="$(realpath -m "$1")"
+  python3 - "$LH_VM_DIR/monitor.sock" "$out" <<'PY'
+import socket, sys, time
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+s.sendall(f"screendump {sys.argv[2]} -f png\n".encode()); time.sleep(1); s.close()
+PY
+  for _ in $(seq 20); do [[ -s "$out" ]] && { log "saved $out"; return 0; }; sleep 0.5; done
+  die "no screenshot was written (is the VM's monitor socket there?)"
+}
+
 case "${1:-}" in
   image) cmd_image ;;
   up) cmd_up ;;
@@ -161,5 +182,6 @@ case "${1:-}" in
   down) cmd_down ;;
   reset) cmd_reset ;;
   status) cmd_status ;;
-  *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; [[ -z "${1:-}" || "$1" == help ]] || exit 2 ;;
+  screenshot) shift; cmd_screenshot "$@" ;;
+  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; [[ -z "${1:-}" || "$1" == help ]] || exit 2 ;;
 esac
