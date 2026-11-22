@@ -1,0 +1,13 @@
+# Replacement rules for scripts/history-clean.sh (make history-clean). Copy to
+#   ~/.config/linux-hello/history-replacements.txt
+# and write rules for your own machine there; that copy is never committed, because the rules
+# name what they hide. git-filter-repo --replace-text format: one rule per line,
+#   literal text==>replacement
+#   regex:<Python regular expression>==>replacement
+# without ==> the text becomes ***REMOVED***. Lines starting with # are comments.
+# The rules apply to file contents and commit messages of every commit.
+#
+# Examples (replace the left-hand sides with your own values):
+regex:(?i)\bmy-host-name\b==>workstation
+regex:(?i)\bmy-model-family[0-9a-z.:_/-]*==>local-model
+/path/to/my/synced/notes==>/path/to/private/notes

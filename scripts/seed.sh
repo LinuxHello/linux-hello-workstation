@@ -18,6 +18,7 @@ if [[ -e "$CLONE_DIR" ]]; then
   die "$CLONE_DIR exists and is not a seeded clone; move it away first"
 fi
 
+[[ -n "$ARCH_SRC" ]] || die "set ARCH_SRC (in local.mk) to the folder of the private architecture notes"
 note="$ARCH_SRC/Linux Hello - Target Architecture.md"
 dsl="$ARCH_SRC/Linux Hello - workspace.dsl"
 [[ -f "$note" && -f "$dsl" ]] || die "architecture sources missing in $ARCH_SRC"
@@ -29,28 +30,19 @@ log "staging in $stage"
 cp -a "$TEMPLATE_DIR/." "$stage/"
 mkdir -p "$stage/docs/architecture"
 
-# One rule set for both files: the note embeds the same DSL.
+# One rule set for both files: the note embeds the same DSL. The rules and the words that must
+# not survive name the private notes' machine, so they live outside this public repository.
+rules=${LH_SEED_RULES:-${XDG_CONFIG_HOME:-$HOME/.config}/linux-hello/seed-sanitise.sed}
+words=${LH_SEED_WORDS:-${XDG_CONFIG_HOME:-$HOME/.config}/linux-hello/seed-private-words}
+[[ -f "$rules" && -f "$words" ]] || die "the private sanitising rules are missing ($rules, $words)"
 sanitise() {
-  sed -E \
-    -e 's/ \(\[\[Operator Reference\]\] §[0-9]+\)//g' \
-    -e 's/quantum already uses TPM2\/PCR 7 for LUKS\./many systems already use TPM2\/PCR 7 for LUKS./' \
-    -e 's/KWallet is open on quantum;/KWallet is open on the reference machine;/' \
-    -e 's/On quantum, kprobe tracing/Without BPF-LSM, kprobe tracing/' \
-    -e 's/ \(on quantum: Alloy → Loki → Grafana\)/ (e.g. Alloy → Loki → Grafana)/' \
-    -e 's/Alloy, Loki, Grafana on quantum/e.g. Alloy, Loki, Grafana/g' \
-    -e 's/Enabling BPF-LSM on quantum is a kernel command-line \(bootloader\) change: its own documented change record, with pre-checks, rollback and go-ahead\./Enabling BPF-LSM is a kernel command-line (bootloader) change, documented per deployment./' \
-    -e 's/depends on the missing §4\.1 policy/needs a data-classification rule/' \
-    -e 's/The operator cannot review Rust code, so assurance/The maintainer reviews behaviour rather than Rust code, so assurance/' \
-    -e 's/Proposed: Valdemar, with tests/Proposed: the maintainer, with tests/' \
-    -e 's/with the local Structurizr on quantum/with the Structurizr CLI/' \
-    -e 's/with the Structurizr CLI on quantum before use/with the Structurizr CLI before use/' \
-    -e 's/Source note: Architecture\/Linux Hello - Target Architecture\.md/Source note: docs\/architecture\/target-architecture.md/'
+  sed -E -f "$rules"
 }
 awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next} !fm' "$note" | sanitise > "$stage/docs/architecture/target-architecture.md"
 sanitise < "$dsl" > "$stage/docs/architecture/workspace.dsl"
 
 # Fail closed if anything private survived.
-if grep -n -i -E 'quantum|Operator Reference|\[\[|§4\.1|Valdemar|sovereign' "$stage"/docs/architecture/*; then
+if grep -n -i -E -f "$words" "$stage"/docs/architecture/*; then
   die "private workstation references left in docs/architecture (listed above); nothing was written to $CLONE_DIR"
 fi
 

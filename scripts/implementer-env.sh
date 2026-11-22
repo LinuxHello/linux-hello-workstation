@@ -7,8 +7,8 @@
 #
 # The file lands at ${LH_ENV_FILE:-${XDG_CONFIG_HOME:-~/.config}/linux-hello/implementer.env} with
 # mode 600. Values the script can know are filled in: this checkout, the linux-hello clone, and the
-# model that lh-implement.sh uses by default (override with OLLAMA_MODEL=<model:tag> when you run
-# it). Everything else keeps the example's default.
+# model given as OLLAMA_MODEL=<model:tag> when you run it (no model name is built in: which models
+# run here is a detail of the machine). Everything else keeps the example's default.
 set -euo pipefail
 source "$(dirname "$0")/../common.sh"
 
@@ -16,7 +16,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 example="$root/local/implementer.env.example"
 env_file="${LH_ENV_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/linux-hello/implementer.env}"
 host="${OLLAMA_HOST:-http://127.0.0.1:11434}"
-model="${OLLAMA_MODEL:-gemma4-26b-64k:latest}"
+model="${OLLAMA_MODEL:-}"
 
 [[ -f "$example" ]] || die "$example not found"
 
@@ -35,8 +35,8 @@ while IFS= read -r line; do
   case "$line" in
     LH_TOOLING_DIR=*) line="LH_TOOLING_DIR=$root" ;;
     CLONE_DIR=*)      line="CLONE_DIR=$CLONE_DIR" ;;
-    OLLAMA_MODEL=*)   line="OLLAMA_MODEL=$model" ;;
-    LH_BG_MODEL=*)    line="LH_BG_MODEL=$model" ;;
+    OLLAMA_MODEL=*)   [[ -z "$model" ]] || line="OLLAMA_MODEL=$model" ;;
+    LH_BG_MODEL=*)    [[ -z "$model" ]] || line="LH_BG_MODEL=$model" ;;
   esac
   printf '%s\n' "$line"
 done <"$example" >"$tmp"
@@ -51,7 +51,7 @@ if grep -nE '^[A-Z_]+=.*<[^>]*>' "$env_file"; then
 fi
 
 # Say whether the server on loopback has the model. Informational only.
-if command -v curl >/dev/null && command -v jq >/dev/null && [[ "$host" == http://127.0.0.1:* || "$host" == http://localhost:* ]]; then
+if [[ -n "$model" ]] && command -v curl >/dev/null && command -v jq >/dev/null && [[ "$host" == http://127.0.0.1:* || "$host" == http://localhost:* ]]; then
   if tags="$(curl -fsS --max-time 3 "$host/api/tags" 2>/dev/null)"; then
     if jq -e --arg m "$model" '.models | map(.name) | index($m)' >/dev/null <<<"$tags"; then
       log "model $model is available at $host"

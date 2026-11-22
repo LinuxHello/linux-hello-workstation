@@ -7,7 +7,9 @@ export REPO ?= linux-hello
 export OWNER ?= atterdag
 # A clone kept under the short name (architecture, branding) from before the renaming is still found.
 export CLONE_DIR ?= $(firstword $(wildcard $(HOME)/projects/$(ORG)/$(REPO) $(HOME)/projects/$(ORG)/$(patsubst linux-hello-%,%,$(REPO))) $(HOME)/projects/$(ORG)/$(REPO))
-export ARCH_SRC ?= /srv/sync/GoogleDrive/Obsidian Vaults/Sovereign AI Workstation/Architecture
+# Where the private architecture notes are, for the one-off seeding (scripts/seed.sh,
+# scripts/preflight.sh): set ARCH_SRC in local.mk, which is never committed.
+export ARCH_SRC ?=
 export REPO_SLUG ?= $(ORG)/$(REPO)
 # The architecture repository (diagrams, the pinned Structurizr image and its scripts).
 export ARCH_REPO_DIR ?= $(HOME)/projects/$(ORG)/architecture
@@ -16,7 +18,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-greetd vm-desktop vm-test-greeter vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test \
+        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-greetd vm-desktop vm-test-greeter vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test history-clean \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -30,8 +32,8 @@ help:
 	@echo "  make signoff PR=<n> [REPO=<repo>]   certify a reviewed PR's commits with your DCO sign-off (default: $(REPO))"
 	@echo
 	@echo "Implementer on this workstation (attended)"
-	@echo "  make claude-gpu           Claude Code on the GPU Ollama (gemma4 64k), never the billed account"
-	@echo "  make claude-cpu           the same on the CPU-only Ollama (gemma4 128k, slow)"
+	@echo "  make claude-gpu           Claude Code on the GPU Ollama (LH_MODEL_GPU), never the billed account"
+	@echo "  make claude-cpu           the same on the CPU-only Ollama (LH_MODEL_CPU, slow)"
 	@echo "  make implement ISSUE=<n> [HARNESS=aider|claude]   implement one issue from its brief"
 	@echo "  make implement-next       one tick of the unattended loop, by hand"
 	@echo "  make draft-brief ISSUE=n  a local model drafts the brief into a file (never posts)"
@@ -78,6 +80,7 @@ help:
 	@echo
 	@echo "Checks"
 	@echo "  make test                 the tooling's own tests and shellcheck"
+	@echo "  make history-clean REPO=<repo> [PUSH=1]   rewrite a repository's history so no commit names this machine; dry run without PUSH=1 (scripts/history-clean.sh)"
 	@echo
 	@echo "Once: organisation and repository setup (done; idempotent if re-run)"
 	@echo "  make preflight | org | repo | seed | protect | labels | security | sonar | verify | all"
@@ -202,7 +205,10 @@ image-mirror:
 	@bash $(ARCH_REPO_DIR)/scripts/mirror-image.sh
 
 # --- Checks ---------------------------------------------------------------------------------
+history-clean: ; @bash scripts/history-clean.sh
+
 test:
+	bash scripts/check-public.sh
 	bash local/test-lh-env.sh
 	bash local/test-lh-implement-next.sh
 	bash local/test-lh-branch.sh

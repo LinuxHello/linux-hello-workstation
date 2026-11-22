@@ -8,7 +8,7 @@
 if [[ ! -d "$CLONE_DIR" && -d "$HOME/projects/$ORG/${REPO#linux-hello-}" ]]; then
   CLONE_DIR="$HOME/projects/$ORG/${REPO#linux-hello-}"
 fi
-: "${ARCH_SRC:=/srv/sync/GoogleDrive/Obsidian Vaults/Sovereign AI Workstation/Architecture}"
+: "${ARCH_SRC:=}"
 BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${TEMPLATE_DIR:=$BOOTSTRAP_DIR/repo}"
 log() { printf '\033[1m==> %s\033[0m\n' "$*"; }
