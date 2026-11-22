@@ -12,7 +12,7 @@ pass=0 fail=0
 check() { if [[ "$2" == 0 ]]; then pass=$((pass + 1)); echo "ok   $1"; else fail=$((fail + 1)); echo "FAIL $1"; fi; }
 
 mkdir -p "$work/srv" "$work/bin" "$work/clone" "$work/arch/templates" "$work/drafts"
-python3 "$here/stub-ollama.py" "$work/srv" qwen38-27b-text-32k:latest gemma4-26b-64k:latest & srv=$!
+python3 "$here/stub-ollama.py" "$work/srv" draft-model:1 implement-model:1 & srv=$!
 for _ in $(seq 50); do [[ -s "$work/srv/port" ]] && break; sleep 0.1; done
 port=$(cat "$work/srv/port")
 export OLLAMA_HOST="http://127.0.0.1:$port"
@@ -47,14 +47,15 @@ chmod +x "$work"/bin/*
 # The tests never read the maintainer's real memory or its configuration: the memory tests below set both.
 export LH_MEMORY_ENV=/nonexistent LH_MEMORY_DIR="$work/no-memory"
 export PATH="$work/bin:$PATH" STUB_DIR="$work" CLONE_DIR="$work/clone" ARCH_REPO_DIR="$work/arch" \
-  LH_DRAFT_DIR="$work/drafts" LH_MODELS_ENV=/nonexistent GH_TOKEN=secret
+  LH_DRAFT_DIR="$work/drafts" LH_MODELS_ENV="$work/models.env" GH_TOKEN=secret
+printf 'LH_MODEL_DRAFT=draft-model:1\nLH_CTX_DRAFT=32768\n' > "$work/models.env"
 
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 printf 'Sure, here is the brief.\n## Implementation brief\n### 1. Goal\nDo it.\n### 3. Properties and tests first\n- `a_test_that_fails`: it works.\n' > "$work/answer"
 bash "$here/lh-draft.sh" brief 7 > "$work/out" 2>&1; rc=$?
 check "a_brief_draft_is_written" "$([[ $rc -eq 0 && -f "$work/drafts/brief-7.md" ]]; echo $?)"
 check "preamble_before_the_heading_is_dropped" "$([[ "$(head -1 "$work/drafts/brief-7.md")" == "## Implementation brief" ]]; echo $?)"
-check "the_draft_model_was_the_only_one_loaded_during_the_run" "$([[ "$(tr -d '\n' < "$work/loaded.during")" == qwen38-27b-text-32k:latest ]]; echo $?)"
+check "the_draft_model_was_the_only_one_loaded_during_the_run" "$([[ "$(tr -d '\n' < "$work/loaded.during")" == draft-model:1 ]]; echo $?)"
 check "the_draft_model_is_unloaded_afterwards" "$([[ -z "$(tr -d '\n ' < "$work/srv/loaded")" ]]; echo $?)"
 check "the_first_brief_pass_has_no_tools" "$(grep -qE -- '--tools  ?--max-turns 3'  "$work/claude.args"; echo $?)"
 check "the_model_gets_no_github_token" "$(grep -q "token=unset" "$work/claude.env"; echo $?)"
@@ -73,30 +74,30 @@ check "an_adr_draft_starts_at_its_frontmatter" "$([[ $rc -eq 0 && "$(head -1 "$w
 # The maintainer's rule for documents: a reader with no earlier knowledge must be able to follow them.
 check "the_adr_prompt_asks_for_a_text_a_newcomer_can_follow" "$(grep -q 'reader who is new to the subject' "$work/claude.args" && grep -q 'Explain every term' "$work/claude.args"; echo $?)"
 
-printf 'qwen38-27b-text-32k:latest\n' > "$work/srv/loaded"
+printf 'draft-model:1\n' > "$work/srv/loaded"
 cat > "$work/bin/pgrep" <<'SH'
 #!/usr/bin/env bash
 exit 0
 SH
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 rc=0; bash "$here/lh-draft.sh" brief 9 > "$work/out" 2>&1 || rc=$?
 check "a_model_in_use_by_a_session_is_not_evicted" "$([[ $rc -ne 0 ]] && grep -q 'interactive session' "$work/out"; echo $?)"
 
 printf '#!/usr/bin/env bash\nexit 1\n' > "$work/bin/pgrep"
 # Refining: a brief with a hedge and a name that exists nowhere is sent back; a clean one is not.
 printf '## Implementation brief\n### 3. Properties and tests first\n- `hedged_test_name`: works.\nCall `ghost_helper_fn` (unverified: check api.rs).\n' > "$work/answer"
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 rc=0; bash "$here/lh-draft.sh" brief 10 > "$work/out" 2>&1 || rc=$?
 check "a_hedged_brief_is_sent_back_for_refining" "$([[ $rc -eq 0 ]] && grep -q 'refine round 1' "$work/out" && grep -q 'refine round 2' "$work/out" && grep -q 'DEFECTS FOUND' "$work/claude.args"; echo $?)"
 check "refining_can_only_read" "$(grep -q 'tools Read,Grep,Glob --allowedTools Read Grep Glob' "$work/claude.args"; echo $?)"
 check "the_defects_name_the_hedge_and_the_missing_name" "$(grep -q 'ghost_helper_fn' "$work/out" && grep -q 'HEDGES' "$work/out"; echo $?)"
 check "each_refined_version_is_kept" "$([[ -f "$work/drafts/brief-10.md.round0" ]]; echo $?)"
 check "what_is_still_open_is_reported" "$(grep -q 'still open after refining' "$work/out"; echo $?)"
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 printf '## Implementation brief\n### 3. Properties and tests first\n- `clean_test_name`: works.\n' > "$work/answer"
 rc=0; bash "$here/lh-draft.sh" brief 11 > "$work/out" 2>&1 || rc=$?
 check "a_clean_brief_is_not_refined" "$([[ $rc -eq 0 ]] && ! grep -q 'refine round' "$work/out"; echo $?)"
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 printf '## Implementation brief\n- `hedged_test_name`: works. (unverified)\n' > "$work/answer"
 rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 12 > "$work/out" 2>&1 || rc=$?
 check "rounds_zero_turns_refining_off" "$([[ $rc -eq 0 ]] && ! grep -q 'refine round' "$work/out"; echo $?)"
@@ -167,7 +168,7 @@ cat > "$work/bin/pgrep" <<'SH'
 #!/usr/bin/env bash
 exit 1
 SH
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 printf '## Implementation brief\n### 1. Goal\nDo it.\n### 3. Properties and tests first\n- `a_test_that_fails`: it works.\n' > "$work/answer"
 mem="$work/mem"
 memenv=(LH_MEMORY_DIR="$mem" LH_MEMORY_BACKEND=jsonl LH_EMBED_HOST="$OLLAMA_HOST" LH_EMBED_MODEL=hash-test
@@ -204,19 +205,19 @@ check "the_brief_prompt_carries_the_checked_facts" "$([[ $rc -eq 0 ]] && grep -q
 # The first pass of a brief has no tools, but a local model sometimes calls Read or Glob anyway, burns its
 # turns on "No such tool" and ends with "Reached max turns" (#135, 2026-11-14). The prompt ends with a
 # reminder, and a failed first pass is asked once more.
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 printf '## Implementation brief\n### 1. Goal\nDo it.\n### 3. Properties and tests first\n- `a_test_that_fails`: it works.\n' > "$work/answer"
 : > "$work/claude.ncalls"
 rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1 || rc=$?
 check "the_brief_prompt_ends_with_the_no_tool_reminder" "$([[ $rc -eq 0 ]] && tr '\n' ' ' < "$work/claude.args" | grep -q "Answer with the brief only.*No tool exists in this session"; echo $?)"
 
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 : > "$work/claude.ncalls"; touch "$work/fail_once"; rm -f "$work/drafts/brief-77.md"
 rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1 || rc=$?
 check "a_first_pass_that_runs_out_of_turns_is_asked_once_more" "$([[ $rc -eq 0 && "$(grep -c CALL "$work/claude.ncalls")" -eq 2 ]] && grep -q 'asking once more' "$work/out" && tr '\n' ' ' < "$work/claude.args" | grep -q 'previous attempt called a tool'; echo $?)"
 check "the_retry_produces_the_draft" "$([[ -f "$work/drafts/brief-77.md" && "$(head -1 "$work/drafts/brief-77.md")" == '## Implementation brief' ]]; echo $?)"
 
-printf 'gemma4-26b-64k:latest\n' > "$work/srv/loaded"
+printf 'implement-model:1\n' > "$work/srv/loaded"
 : > "$work/claude.ncalls"; touch "$work/fail_always"
 rc=0; LH_DRAFT_ROUNDS=0 bash "$here/lh-draft.sh" brief 77 > "$work/out" 2>&1 || rc=$?
 check "a_second_failure_ends_the_run_after_exactly_one_retry" "$([[ $rc -ne 0 && "$(grep -c CALL "$work/claude.ncalls")" -eq 2 ]] && grep -q 'the model run failed' "$work/out"; echo $?)"

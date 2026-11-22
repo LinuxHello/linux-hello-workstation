@@ -60,7 +60,7 @@ Your settings are in `~/.config/linux-hello/implementer.env` (copy the template 
 | Variable | Default | Effect |
 | :-- | :-- | :-- |
 | `LH_HARNESS` | `aider` | `aider` or `claude` |
-| `OLLAMA_MODEL`, `LH_NUM_CTX` | `gemma4-26b-64k:latest`, 65536 | The model and its window |
+| `OLLAMA_MODEL`, `LH_NUM_CTX` | none, 65536 | The model and its window; `make implement-env OLLAMA_MODEL=<model:tag>` fills the model in |
 | `LH_AIDER_EDIT_FORMAT` | `whole` | Leave it. `diff` appended copies of files on four earlier issues |
 | `LH_MAX_OUTPUT` | 12000 | Claude Code's reply cap |
 | `LH_THINK` | 0 | The model does not think (thinking overflowed the window) |

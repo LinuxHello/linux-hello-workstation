@@ -23,6 +23,7 @@ tfa=$(gh api "orgs/$ORG" --jq .two_factor_requirement_enabled)
 
 git config user.signingkey >/dev/null || log "WARN: no git signing key configured; the seed commit will be unsigned (allowed, it lands before the ruleset)"
 
+[[ -n "$ARCH_SRC" ]] || die "set ARCH_SRC (in local.mk) to the folder of the private architecture notes"
 for f in "Linux Hello - Target Architecture.md" "Linux Hello - workspace.dsl"; do
   [[ -f "$ARCH_SRC/$f" ]] || die "missing '$ARCH_SRC/$f' (bisync not run? set ARCH_SRC=<dir> or fetch with rclone copy)"
 done

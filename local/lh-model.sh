@@ -82,13 +82,16 @@ lh_role() {
   local role=${1:-} file=${LH_MODELS_ENV:-${XDG_CONFIG_HOME:-$HOME/.config}/linux-hello/models.env}
   # shellcheck disable=SC1090
   [[ ! -f "$file" ]] || source "$file"
-  : "${LH_MODEL_IMPLEMENT:=gemma4-26b-64k:latest}" "${LH_CTX_IMPLEMENT:=65536}"
-  : "${LH_MODEL_DRAFT:=qwen38-27b-text-32k:latest}" "${LH_CTX_DRAFT:=32768}"
+  : "${LH_CTX_IMPLEMENT:=65536}" "${LH_CTX_DRAFT:=32768}"
   # OLLAMA_MODEL and LH_NUM_CTX are read by the script that sourced this file.
   # shellcheck disable=SC2034
   case "$role" in
-    implement) OLLAMA_MODEL=$LH_MODEL_IMPLEMENT LH_NUM_CTX=$LH_CTX_IMPLEMENT ;;
-    draft)     OLLAMA_MODEL=$LH_MODEL_DRAFT LH_NUM_CTX=$LH_CTX_DRAFT ;;
+    implement)
+      [[ -n "${LH_MODEL_IMPLEMENT:-}" ]] || { lh_model_die "LH_MODEL_IMPLEMENT is not set in $file (see local/models.env.example)"; return; }
+      OLLAMA_MODEL=$LH_MODEL_IMPLEMENT LH_NUM_CTX=$LH_CTX_IMPLEMENT ;;
+    draft)
+      [[ -n "${LH_MODEL_DRAFT:-}" ]] || { lh_model_die "LH_MODEL_DRAFT is not set in $file (see local/models.env.example)"; return; }
+      OLLAMA_MODEL=$LH_MODEL_DRAFT LH_NUM_CTX=$LH_CTX_DRAFT ;;
     *) lh_model_die "unknown role '$role' (implement or draft)"; return ;;
   esac
 }

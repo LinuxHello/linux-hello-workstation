@@ -58,10 +58,12 @@ check "a_non_loopback_host_is_refused_for_loading" "$([[ $rc -ne 0 ]]; echo $?)"
 
 rc=0; [[ "$(env -u OLLAMA_HOST bash -c "source $here/lh-model.sh; bash -c 'echo \$OLLAMA_HOST'")" == http://127.0.0.1:11434 ]] || rc=$?
 check "the_default_host_reaches_child_processes" $rc
-rc=0; ( LH_MODELS_ENV=/nonexistent; lh_role implement; [[ "$OLLAMA_MODEL" == gemma4-26b-64k:latest && "$LH_NUM_CTX" == 65536 ]] ) || rc=$?; check "implement_role_defaults" $rc
-rc=0; ( LH_MODELS_ENV=/nonexistent; lh_role draft; [[ "$OLLAMA_MODEL" == qwen38-27b-text-32k:latest && "$LH_NUM_CTX" == 32768 ]] ) || rc=$?; check "draft_role_defaults" $rc
+rc=0; ( LH_MODELS_ENV=/nonexistent; lh_role implement 2>/dev/null ) || rc=$?
+check "an_unset_model_is_refused_no_name_is_built_in" "$([[ $rc -ne 0 ]]; echo $?)"
+printf 'LH_MODEL_IMPLEMENT=impl:1\n' > "$work/models.env"
+rc=0; ( LH_MODELS_ENV="$work/models.env"; lh_role implement; [[ "$OLLAMA_MODEL" == impl:1 && "$LH_NUM_CTX" == 65536 ]] ) || rc=$?; check "the_window_defaults_when_only_the_model_is_set" $rc
 printf 'LH_MODEL_DRAFT=other:1\nLH_CTX_DRAFT=8192\n' > "$work/models.env"
-rc=0; ( LH_MODELS_ENV="$work/models.env"; lh_role draft; [[ "$OLLAMA_MODEL" == other:1 && "$LH_NUM_CTX" == 8192 ]] ) || rc=$?; check "the_models_file_overrides_the_defaults" $rc
+rc=0; ( LH_MODELS_ENV="$work/models.env"; lh_role draft; [[ "$OLLAMA_MODEL" == other:1 && "$LH_NUM_CTX" == 8192 ]] ) || rc=$?; check "the_models_file_sets_model_and_window" $rc
 rc=0; ( lh_role bogus 2>/dev/null ) || rc=$?
 check "an_unknown_role_is_refused" "$([[ $rc -ne 0 ]]; echo $?)"
 

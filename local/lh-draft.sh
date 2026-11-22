@@ -13,7 +13,7 @@
 #
 # Environment: CLONE_DIR (linux-hello clone), ARCH_REPO_DIR (architecture clone, for the ADR template),
 # REPO_SLUG, LH_EXAMPLE_BRIEF (issue whose brief is the worked example, default 106),
-# LH_THINK (0 default: the model does not think, through local/lh-nothink-relay.py; Qwen's thinking used
+# LH_THINK (0 default: the model does not think, through local/lh-nothink-relay.py; a thinking model used
 # the whole reply cap and left no answer, measured 2026-11-13), LH_DRAFT_MAX_TURNS (default 8, the ADR run; the brief draft has no tools and 3 turns), LH_DRAFT_CONTEXT_BYTES (default 24000), LH_DRAFT_MAX_OUTPUT (default 6000, Claude Code's cap on one reply), LH_MODELS_ENV and the settings of local/lh-model.sh.
 set -euo pipefail
 : "${CLONE_DIR:=$HOME/projects/LinuxHello/linux-hello}"

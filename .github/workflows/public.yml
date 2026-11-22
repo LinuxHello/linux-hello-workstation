@@ -1,0 +1,28 @@
+name: Public content
+
+# This repository is public: no tracked file may describe the maintainer's machine
+# (scripts/check-public.sh, linux-hello AGENTS.md invariant 8).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  public:
+    name: public
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: No home paths, model names or hardware in tracked files
+        # PUBLIC_CHECK_WORDS (a repository secret, one extended regular expression per line) holds
+        # the words that may never appear, such as the machine's name; without it they are not
+        # checked. A secret is not given to pull requests from forks.
+        env:
+          PUBLIC_CHECK_WORDS: ${{ secrets.PUBLIC_CHECK_WORDS }}
+        run: |
+          words="$RUNNER_TEMP/public-check-words"
+          printf '%s\n' "$PUBLIC_CHECK_WORDS" | sed '/^$/d' > "$words"
+          LH_PUBLIC_CHECK_WORDS="$words" bash scripts/check-public.sh

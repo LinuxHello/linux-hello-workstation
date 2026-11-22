@@ -10,7 +10,7 @@ ok()  { pass=$((pass + 1)); echo "ok   $1"; }
 nok() { fail=$((fail + 1)); echo "FAIL $1"; }
 
 # shellcheck disable=SC2120  # some calls pass arguments, some do not
-run() { HOME="$work/home" XDG_CONFIG_HOME="" OLLAMA_HOST=http://127.0.0.1:9 CLONE_DIR="$work/clone" bash "$here/implementer-env.sh" "$@" 2>&1; }
+run() { OLLAMA_MODEL="${OLLAMA_MODEL-test-model:1}" HOME="$work/home" XDG_CONFIG_HOME="" OLLAMA_HOST=http://127.0.0.1:9 CLONE_DIR="$work/clone" bash "$here/implementer-env.sh" "$@" 2>&1; }
 f="$work/home/.config/linux-hello/implementer.env"
 
 out=$(run) && ok "first run succeeds" || nok "first run succeeds: $out"
@@ -18,8 +18,8 @@ out=$(run) && ok "first run succeeds" || nok "first run succeeds: $out"
 [[ "$(stat -c %a "$f")" == 600 ]] && ok "file is mode 600" || nok "file is mode 600"
 grep -q "^LH_TOOLING_DIR=$(cd "$here/.." && pwd)\$" "$f" && ok "points at this checkout" || nok "points at this checkout"
 grep -q "^CLONE_DIR=$work/clone\$" "$f" && ok "points at the clone" || nok "points at the clone"
-grep -q '^OLLAMA_MODEL=gemma4-26b-64k:latest$' "$f" && ok "fills the default model" || nok "fills the default model"
-grep -q '^LH_BG_MODEL=gemma4-26b-64k:latest$' "$f" && ok "background model follows the model" || nok "background model follows the model"
+grep -q '^OLLAMA_MODEL=test-model:1$' "$f" && ok "fills the given model" || nok "fills the given model"
+grep -q '^LH_BG_MODEL=test-model:1$' "$f" && ok "background model follows the model" || nok "background model follows the model"
 ! grep -qE '^[A-Z_]+=.*<[^>]*>' "$f" && ok "leaves no placeholder" || nok "leaves no placeholder"
 # Every other line is the example's.
 diff <(grep -vE '^(LH_TOOLING_DIR|CLONE_DIR|OLLAMA_MODEL|LH_BG_MODEL)=' "$f") \
@@ -32,6 +32,10 @@ grep -q '^OLLAMA_MODEL=mine:1b$' "$f" && grep -q "left unchanged" <<<"$out" && o
 
 rm -f "$f"
 out=$(OLLAMA_MODEL=other:7b run) && grep -q '^OLLAMA_MODEL=other:7b$' "$f" && ok "OLLAMA_MODEL at creation is honoured" || nok "OLLAMA_MODEL at creation is honoured"
+
+rm -f "$f"
+out=$(OLLAMA_MODEL='' run) && grep -q '^OLLAMA_MODEL=<model:tag>$' "$f" && grep -q "still hold a placeholder" <<<"$out" \
+  && ok "without a model the placeholder stays and is reported" || nok "without a model the placeholder stays and is reported: $out"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
