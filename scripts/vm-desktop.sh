@@ -4,7 +4,7 @@
 # screen) for Linux Hello's greeter. Also the Qt Quick runtime and PySide6, for spike greeters
 # written in QML with a Python part. It changes only the VM; run it once after scripts/vm.sh up.
 #
-#   export LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604-desktop LH_VM_SSH_PORT=2224 \
+#   export LH_VM_RELEASE=26.04 LH_VM_NAME=linux-hello-vm-2604-desktop LH_VM_SSH_PORT=2224 \
 #          LH_VM_MEM=8192 LH_VM_DISK=40G
 #   scripts/vm.sh up && scripts/vm-desktop.sh && scripts/vm.sh screenshot screen.png
 #

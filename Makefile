@@ -18,7 +18,7 @@ BACKLOG := $(CLONE_DIR)/scripts/backlog/backlog.sh
 .DEFAULT_GOAL := help
 .PHONY: help next backlog backlog-check triage board map labels signoff \
         claude-gpu claude-cpu tpm-dev-deps adr-tools adr vm-deps vm-image vm-up vm-ssh vm-sync vm-down vm-reset vm-status \
-        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-greetd vm-desktop vm-test-greeter vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test history-clean \
+        vm-test-agent vm-test-agent-all vm-test-pin vm-test-pam-sudo vm-test-fingerprint vm-test-provider vm-test-pam vm-test-greetd vm-desktop vm-test-greeter vm-root vm-move vm-test-rpbind vm-test-uhid vm-test-uhid-session vm-test-prompt-launch vm-test-prompt-identity vm-test-uvup image-check image-mirror implement implement-next draft-brief draft-next-brief draft-adr memory-venv memory-index memory-query memory-stats memory-expire models models-unload implementer-env reset test history-clean \
         all preflight org repo seed protect security sonar verify
 
 help:
@@ -60,6 +60,8 @@ help:
 	@echo "  Every vm-* target takes VM_RELEASE=24.04 (default) or 26.04: each release has its own image, disk and ssh port"
 	@echo "  make vm-deps | vm-image   install the tools / download and verify the cloud image (once per release)"
 	@echo "  make vm-up | vm-ssh | vm-sync | vm-down | vm-reset | vm-status   boot, log in, copy the clone in, stop, throw the disk away, show"
+	@echo "  make vm-root              where the VMs live (LH_VM_ROOT in ~/.config/linux-hello/vm.env; default ~/.local/share)"
+	@echo "  make vm-move TO=/dir      move every VM (stopped) to another root and write it into that file"
 	@echo "  make vm-test-agent        install the Agent with its bus policy, unit and AppArmor profile in the VM and test the confinement"
 	@echo "  make vm-test-agent-all    the same on every release (boots each VM; the images must be downloaded)"
 	@echo "  make vm-test-fingerprint  the fingerprint method against the real fprintd in the VM (installs fprintd there; virtual finger)"
@@ -156,8 +158,12 @@ adr:
 # another release through $(MAKE) is not misled by what this make exported.
 VM_RELEASES := 24.04 26.04
 VM_RELEASE ?= 24.04
-VM_DIR_24.04 := $(HOME)/.local/share/linux-hello-vm
-VM_DIR_26.04 := $(HOME)/.local/share/linux-hello-vm-2604
+# The directory that holds every VM's directory: LH_VM_ROOT in ~/.config/linux-hello/vm.env (or the
+# environment), else ~/.local/share. scripts/vm-config.sh says how to set it; make vm-move moves VMs.
+VM_ROOT := $(shell bash scripts/vm-config.sh root)
+$(if $(VM_ROOT),,$(error the VM root is not set right; see scripts/vm-config.sh))
+VM_DIR_24.04 := $(VM_ROOT)/linux-hello-vm
+VM_DIR_26.04 := $(VM_ROOT)/linux-hello-vm-2604
 VM_PORT_24.04 := 2222
 VM_PORT_26.04 := 2223
 $(if $(VM_DIR_$(VM_RELEASE)),,$(error VM_RELEASE=$(VM_RELEASE) is not one of: $(VM_RELEASES)))
@@ -169,6 +175,10 @@ vm-deps:
 	@missing=; for p in $(VM_PKGS); do dpkg -s $$p >/dev/null 2>&1 || missing="$$missing $$p"; done; \
 	 if [ -z "$$missing" ]; then echo "vm-deps: everything is installed"; \
 	 else echo "installing:$$missing"; sudo apt-get install -y $$missing; fi
+vm-root: ; @echo "$(VM_ROOT)  (set LH_VM_ROOT in $$(bash scripts/vm-config.sh conf))"
+vm-move:
+	@test -n "$(TO)" || { echo "usage: make vm-move TO=/path/to/new/root"; exit 1; }
+	@bash scripts/vm-move.sh "$(TO)"
 vm-image: ; @bash scripts/vm.sh image
 vm-up: ; @bash scripts/vm.sh up
 vm-ssh: ; @bash scripts/vm.sh ssh
@@ -227,6 +237,7 @@ test:
 	bash scripts/test-implementer-env.sh
 	bash scripts/test-dco-signoff.sh
 	bash scripts/test-vm.sh
+	bash scripts/test-vm-move.sh
 	@if command -v shellcheck >/dev/null; then shellcheck -S warning -x -P SCRIPTDIR scripts/*.sh local/*.sh && echo "shellcheck clean"; \
 	 else echo "shellcheck not installed: sudo apt install shellcheck"; fi
 
