@@ -117,8 +117,17 @@ EOF
     cloud-localds "$seed" "$LH_VM_DIR/user-data" "$LH_VM_DIR/meta-data"
   fi
   log "starting the software TPM"
-  swtpm socket --tpmstate dir="$tpm_dir" --ctrl type=unixio,path="$LH_VM_DIR/swtpm.sock" \
-    --tpm2 --daemon --pid file="$tpm_pidfile" --flags not-need-init,startup-clear
+  if ! swtpm socket --tpmstate dir="$tpm_dir" --ctrl type=unixio,path="$LH_VM_DIR/swtpm.sock" \
+      --tpm2 --daemon --pid file="$tpm_pidfile" --flags not-need-init,startup-clear; then
+    # Ubuntu confines swtpm with an AppArmor profile that lets it write under the home directory
+    # only; a VM root elsewhere (scripts/vm-config.sh) needs one line in the profile's local file.
+    if [[ "$LH_VM_DIR" != "$HOME"/* && -f /etc/apparmor.d/usr.bin.swtpm ]]; then
+      die "swtpm may not write in $LH_VM_DIR (its AppArmor profile allows the home directory only). Allow the VM root:
+  echo 'owner $LH_VM_ROOT/** rwk,' | sudo tee -a /etc/apparmor.d/local/usr.bin.swtpm
+  sudo apparmor_parser -r /etc/apparmor.d/usr.bin.swtpm"
+    fi
+    die "swtpm did not start"
+  fi
   log "booting (KVM, $LH_VM_CPUS CPUs, $LH_VM_MEM MiB, ssh on 127.0.0.1:$LH_VM_SSH_PORT)"
   qemu-system-x86_64 -enable-kvm -cpu host -smp "$LH_VM_CPUS" -m "$LH_VM_MEM" \
     -drive file="$disk",if=virtio,format=qcow2 -drive file="$seed",if=virtio,format=raw,readonly=on \

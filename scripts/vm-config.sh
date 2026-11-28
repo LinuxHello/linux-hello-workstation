@@ -14,6 +14,8 @@
 #
 # The file is read, not run: only lines LH_VM_ROOT=<absolute path> count, and a relative path or
 # any other value stops with an error. scripts/vm-move.sh moves VMs that already exist.
+# A root outside the home directory needs one line for swtpm's AppArmor profile, which otherwise
+# lets the TPM emulator write under the home directory only (vm.sh up prints the two commands).
 #
 #   source scripts/vm-config.sh     sets LH_VM_ROOT (vm.sh and the other scripts do this)
 #   scripts/vm-config.sh root       prints it (the Makefile uses this)
@@ -43,7 +45,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   case "${1:-}" in
     root) lh_vm_root ;;
     conf) lh_vm_conf_file ;;
-    *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; [[ -z "${1:-}" ]] ;;
+    *) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; [[ -z "${1:-}" ]] ;;
   esac
 else
   LH_VM_ROOT="$(lh_vm_root)" || exit 1
