@@ -122,9 +122,11 @@ EOF
     # Ubuntu confines swtpm with an AppArmor profile that lets it write under the home directory
     # only; a VM root elsewhere (scripts/vm-config.sh) needs one line in the profile's local file.
     if [[ "$LH_VM_DIR" != "$HOME"/* && -f /etc/apparmor.d/usr.bin.swtpm ]]; then
+      local rule="owner $LH_VM_ROOT/** rwk," add=
+      grep -qxF "$rule" /etc/apparmor.d/local/usr.bin.swtpm 2>/dev/null \
+        || add="  echo '$rule' | sudo tee -a /etc/apparmor.d/local/usr.bin.swtpm"$'\n'
       die "swtpm may not write in $LH_VM_DIR (its AppArmor profile allows the home directory only). Allow the VM root:
-  echo 'owner $LH_VM_ROOT/** rwk,' | sudo tee -a /etc/apparmor.d/local/usr.bin.swtpm
-  sudo apparmor_parser -r /etc/apparmor.d/usr.bin.swtpm"
+${add}  sudo apparmor_parser -r /etc/apparmor.d/usr.bin.swtpm"
     fi
     die "swtpm did not start"
   fi
