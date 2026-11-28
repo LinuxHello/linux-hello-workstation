@@ -9,7 +9,7 @@
 #
 # The provider and the PAM module link system libraries (TSS2, libpam), so they are built on this
 # machine for the release of the VM, and the VM must run the same release (Ubuntu 26.04: export
-# LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604 LH_VM_SSH_PORT=2223). It changes
+# LH_VM_RELEASE=26.04 LH_VM_NAME=linux-hello-vm-2604 LH_VM_SSH_PORT=2223). It changes
 # only the VM.
 set -euo pipefail
 source "$(dirname "$0")/../common.sh"

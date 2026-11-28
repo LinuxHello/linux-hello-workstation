@@ -13,22 +13,25 @@
 #   scripts/vm.sh screenshot FILE.png   save what the VM's screen shows (a VM with a desktop)
 #
 # Another release beside the first (its own image, disk and ssh port), for example Ubuntu 26.04:
-#   export LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604 LH_VM_SSH_PORT=2223
+#   export LH_VM_RELEASE=26.04 LH_VM_NAME=linux-hello-vm-2604 LH_VM_SSH_PORT=2223
 #   scripts/vm.sh image && scripts/vm.sh up && scripts/vm-test-agent.sh
 # A VM with a desktop for the login and lock screens (more memory and disk; its own directory):
-#   export LH_VM_RELEASE=26.04 LH_VM_DIR=~/.local/share/linux-hello-vm-2604-desktop LH_VM_SSH_PORT=2224 \
+#   export LH_VM_RELEASE=26.04 LH_VM_NAME=linux-hello-vm-2604-desktop LH_VM_SSH_PORT=2224 \
 #          LH_VM_MEM=8192 LH_VM_DISK=40G
 #   scripts/vm.sh image && scripts/vm.sh up && scripts/vm-desktop.sh
 # Ubuntu 24.04 is the release CI runs on. The VM has KVM, 4 CPUs, 4 GiB, a TPM 2.0 from swtpm
 # (the guest sees /dev/tpm0 and /dev/tpmrm0) and a user-mode network: ssh on 127.0.0.1:$LH_VM_SSH_PORT
 # only, no inbound access from the LAN. Everything lives in $LH_VM_DIR; nothing outside it changes.
+# $LH_VM_DIR is $LH_VM_ROOT/$LH_VM_NAME unless set: the root comes from ~/.config/linux-hello/vm.env
+# (scripts/vm-config.sh says how; default ~/.local/share), the name defaults to linux-hello-vm.
 # Needs: qemu-system-x86, qemu-utils, swtpm, cloud-image-utils (cloud-localds), openssh-client,
 # rsync, curl, gpg (the image checksums are verified against Canonical's signing key when the
 # ubuntu-keyring package is present; cloud images are signed with the cloud-image key, not the archive key).
 set -euo pipefail
 source "$(dirname "$0")/../common.sh"
+source "$(dirname "$0")/vm-config.sh"
 
-: "${LH_VM_DIR:=${XDG_DATA_HOME:-$HOME/.local/share}/linux-hello-vm}"
+: "${LH_VM_DIR:=$LH_VM_ROOT/${LH_VM_NAME:-linux-hello-vm}}"
 : "${LH_VM_SSH_PORT:=2222}"
 : "${LH_VM_CPUS:=4}"
 : "${LH_VM_MEM:=4096}"
@@ -170,6 +173,7 @@ cmd_reset() {
 cmd_status() {
   if running; then echo "running, ssh port $LH_VM_SSH_PORT"; else echo "stopped"; fi
   [[ -f "$base_img" ]] && echo "image: $base_img" || echo "image: not downloaded"
+  echo "directory: $LH_VM_DIR"
 }
 
 # Saves the VM's screen through QEMU's monitor (screendump), as PNG.
